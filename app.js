@@ -19,6 +19,8 @@ app.use(function(req, res, next) {
     next();
 });
 
+console.log(JSON.parse(process.env['permisitions']));
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

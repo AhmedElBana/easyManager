@@ -2,7 +2,7 @@
     "test": {
         "PORT": 3001,
         "MONGODB_URL": "mongodb://localhost:27017/easyManager",
-        "JWT_SECRET": "sdf56sdf65sf6g16sfg654SAD5"
+        "JWT_SECRET": "hjn8g4j8asd98+a5d895*/7d/*asd5/*asd5as4d-0<da1n"
     },
     "development": {
         "PORT": 3001,

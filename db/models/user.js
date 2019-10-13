@@ -30,10 +30,22 @@ let UserSchema = new mongoose.Schema({
           message: '{VALUE} is not a valid email!'
         }
 	},
-	imageUrl: {
-		required: true,
+	phoneNumber: {
 		type: String,
-		trim: true
+		trim: true,
+		unique: true,
+		required: true
+	},
+	type: {
+		// admin/staff
+		type: String,
+		trim: true,
+		unique: true,
+		required: true
+	},
+	permissions: {
+		//required: true,
+		type: Array
 	},
 	code: {
 		type: String,
@@ -48,7 +60,7 @@ let UserSchema = new mongoose.Schema({
 UserSchema.methods.toJSON = function(){
 	let User = this;
 	let UserObject = User.toObject();
-	return _.pick(UserObject, ['_id','name','email','imageUrl']);
+	return _.pick(UserObject, ['_id','name','email','phoneNumber','type','permissions']);
 }
 
 UserSchema.methods.generateAuthToken = function(){
