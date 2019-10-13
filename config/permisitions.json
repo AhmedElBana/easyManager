@@ -1,5 +1,6 @@
-{
-    "100":"can create staff",
-    "101":"can edit staff",
-    "102":"can deactivate staff"
+{   
+    "100":"can view staff",
+    "101":"can create staff",
+    "102":"can edit staff",
+    "103":"can deactivate staff"
 }
