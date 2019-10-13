@@ -228,6 +228,7 @@ router.post('/admin/create', function(req, res, next) {
             "message": "Missing data, (name, email, phoneNumber, password) fields are required."
         });
     }else{
+        body.active = true;
         body.is_login = true;
         body.type = 'admin';
         body.permissions = Object.keys(JSON.parse(process.env['permisitions']));

@@ -40,12 +40,20 @@ let UserSchema = new mongoose.Schema({
 		// admin/staff
 		type: String,
 		trim: true,
-		unique: true,
 		required: true
 	},
 	permissions: {
 		//required: true,
 		type: Array
+	},
+	active: {
+		type: Boolean,
+		required: true
+	},
+	parent: {
+		type: String,
+		trim: true,
+		unique: true
 	},
 	code: {
 		type: String,
@@ -60,7 +68,7 @@ let UserSchema = new mongoose.Schema({
 UserSchema.methods.toJSON = function(){
 	let User = this;
 	let UserObject = User.toObject();
-	return _.pick(UserObject, ['_id','name','email','phoneNumber','type','permissions']);
+	return _.pick(UserObject, ['_id','name','email','phoneNumber','type','permissions','active','parent']);
 }
 
 UserSchema.methods.generateAuthToken = function(){

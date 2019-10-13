@@ -19,7 +19,13 @@ router.post('/create', authenticate, function(req, res, next) {
                 "message": "Missing data, (name, email, phoneNumber, permissions, password) fields are required."
             });
         }else{
+            body.active = true;
             body.is_login = false;
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
             body.type = 'staff';
             let permissionsArr = body.permissions.split(",");
             let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
@@ -74,5 +80,84 @@ router.post('/create', authenticate, function(req, res, next) {
     }
 });
 
+/* edit staff. */
+router.post('/edit', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('102')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to edit staff."
+        });
+    }else{
+        let body = _.pick(req.body, ['user_id','name','email','phoneNumber','permissions','active','password']);
+        if(!body.user_id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (user_id) field is required."
+            });
+        }else{
+            let user = req.user;
+            let updateBody = {};
+            if(req.body.name){updateBody.name = req.body.name}
+            if(req.body.email){updateBody.email = req.body.email}
+            if(req.body.phoneNumber){updateBody.phoneNumber = req.body.phoneNumber}
+            if(req.body.permissions){
+                let permissionsArr = body.permissions.split(",");
+                let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
+                let resultArr = [];
+                permissionsArr.map((perm)=>{
+                    if(fullPermsArr.includes(perm)){
+                        resultArr.push(perm);
+                    }
+                })
+                updateBody.permissions = resultArr;
+            }
+            if(req.body.active){updateBody.active = req.body.active}
+            if(req.body.password){updateBody.password = req.body.password}
 
+            let query;
+            if(req.user.type == 'admin'){
+                query = {_id: body.user_id, parent: req.user._id};
+            }else if(req.user.type == 'staff'){
+                query = {_id: body.user_id, parent: req.user.parent};
+            }
+            User.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                if(e){
+                    if(e.errmsg && e.errmsg.includes("email")){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "This email is already exist."
+                        });
+                    }else if(e.errmsg && e.errmsg.includes("phoneNumber")){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "This phone number is already exist."
+                        });
+                    }else if(e.name && e.name == "CastError"){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": e.message
+                        });
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "error while updating user data."
+                        });
+                    }
+                }else{
+                    if(response == null){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't find any staff with this user_id."
+                        });
+                    }else{
+                        return res.send({
+                            "status": 1,
+                            "data": {"userData": response}
+                        });   
+                    }
+                }
+            })
+        }
+    }
+});
 module.exports = router;
