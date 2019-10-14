@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
@@ -137,6 +138,7 @@ UserSchema.pre('findOneAndUpdate', function(next){
 	}
 });
 
+UserSchema.plugin(mongoosePaginate);
 let User = mongoose.model('User', UserSchema);
 
 module.exports = {User}
