@@ -63,58 +63,38 @@ router.post('/create', authenticate, function(req, res, next) {
     }
 });
 
-/* edit staff. */
+/* edit branch. */
 router.post('/edit', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('102')){
+    if(!req.user.permissions.includes('106')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to edit staff."
+            "message": "This user does not have perrmission to edit branch."
         });
     }else{
-        let body = _.pick(req.body, ['user_id','name','email','phoneNumber','permissions','active','password']);
-        if(!body.user_id){
+        let body = _.pick(req.body, ['branch_id','name','phoneNumber','address','type','active']);
+        if(!body.branch_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (user_id) field is required."
+                "message": "Missing data, (branch_id) field is required."
             });
         }else{
             let user = req.user;
             let updateBody = {};
             if(req.body.name){updateBody.name = req.body.name}
-            if(req.body.email){updateBody.email = req.body.email}
             if(req.body.phoneNumber){updateBody.phoneNumber = req.body.phoneNumber}
-            if(req.body.permissions){
-                let permissionsArr = body.permissions.split(",");
-                //if can create staff the can view staff
-                if(permissionsArr.includes('101') && !permissionsArr.includes('100')){permissionsArr.push('100')}
-                let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
-                let resultArr = [];
-                permissionsArr.map((perm)=>{
-                    if(fullPermsArr.includes(perm)){
-                        if(!resultArr.includes(perm)){
-                            resultArr.push(perm);
-                        }
-                    }
-                })
-                updateBody.permissions = resultArr;
-            }
+            if(req.body.address){updateBody.address = req.body.address}
+            if(req.body.type){updateBody.type = req.body.type}
             if(req.body.active){updateBody.active = req.body.active}
-            if(req.body.password){updateBody.password = req.body.password}
 
             let query;
             if(req.user.type == 'admin'){
-                query = {_id: body.user_id, parent: req.user._id};
+                query = {_id: body.branch_id, parent: req.user._id};
             }else if(req.user.type == 'staff'){
-                query = {_id: body.user_id, parent: req.user.parent};
+                query = {_id: body.branch_id, parent: req.user.parent};
             }
-            User.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            Branch.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
                 if(e){
-                    if(e.errmsg && e.errmsg.includes("email")){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "This email is already exist."
-                        });
-                    }else if(e.errmsg && e.errmsg.includes("phoneNumber")){
+                    if(e.errmsg && e.errmsg.includes("phoneNumber")){
                         res.status(400).send({
                             "status": 0,
                             "message": "This phone number is already exist."
@@ -134,12 +114,12 @@ router.post('/edit', authenticate, function(req, res, next) {
                     if(response == null){
                         res.status(400).send({
                             "status": 0,
-                            "message": "can't find any staff with this user_id."
+                            "message": "can't find any branch with this branch_id."
                         });
                     }else{
                         return res.send({
                             "status": 1,
-                            "data": {"userData": response}
+                            "data": {"branchData": response}
                         });   
                     }
                 }
@@ -148,12 +128,12 @@ router.post('/edit', authenticate, function(req, res, next) {
     }
 });
 
-/* edit staff. */
+/* list branches. */
 router.get('/list', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('100')){
+    if(!req.user.permissions.includes('104')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to view staff."
+            "message": "This user does not have perrmission to view branches."
         });
     }else{
         let page;
@@ -174,14 +154,14 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        User.paginate(filters, options, function(err, result) {
+        Branch.paginate(filters, options, function(err, result) {
             let next;
             if(result.hasNextPage){
-                next = "https://" + req.headers.host + "/api/staff/list?page=" + result.nextPage + "&page_size=" + page_size;
+                next = "https://" + req.headers.host + "/api/branch/list?page=" + result.nextPage + "&page_size=" + page_size;
             }else{next = null;}
             let prev;
             if(result.hasPrevPage){
-                prev = "https://" + req.headers.host + "/api/staff/list?page=" + result.prevPage + "&page_size=" + page_size;
+                prev = "https://" + req.headers.host + "/api/branch/list?page=" + result.prevPage + "&page_size=" + page_size;
             }else{prev = null;}
             let data = {
                 total: result.totalDocs,
