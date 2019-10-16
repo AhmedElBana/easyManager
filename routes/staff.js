@@ -30,9 +30,13 @@ router.post('/create', authenticate, function(req, res, next) {
             let permissionsArr = body.permissions.split(",");
             let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
             let resultArr = [];
+            //if can create staff the can view staff
+            if(permissionsArr.includes('101')){permissionsArr.push('100')}
             permissionsArr.map((perm)=>{
                 if(fullPermsArr.includes(perm)){
-                    resultArr.push(perm);
+                    if(!resultArr.includes(prem)){
+                        resultArr.push(perm);
+                    }
                 }
             })
             body.permissions = resultArr;
@@ -102,11 +106,15 @@ router.post('/edit', authenticate, function(req, res, next) {
             if(req.body.phoneNumber){updateBody.phoneNumber = req.body.phoneNumber}
             if(req.body.permissions){
                 let permissionsArr = body.permissions.split(",");
+                //if can create staff the can view staff
+                if(permissionsArr.includes('101')){permissionsArr.push('100')}
                 let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
                 let resultArr = [];
                 permissionsArr.map((perm)=>{
                     if(fullPermsArr.includes(perm)){
-                        resultArr.push(perm);
+                        if(!resultArr.includes(prem)){
+                            resultArr.push(perm);
+                        }
                     }
                 })
                 updateBody.permissions = resultArr;
