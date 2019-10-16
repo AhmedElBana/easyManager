@@ -2,5 +2,9 @@
     "100":"can view staff",
     "101":"can create staff",
     "102":"can edit staff",
-    "103":"can deactivate staff"
+    "103":"can deactivate staff",
+    "104":"can view branch",
+    "105":"can create branch",
+    "106":"can edit branch",
+    "107":"can deactivate branch"
 }

@@ -2,63 +2,40 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {User} = require('./../db/models/user');
+let {Branch} = require('./../db/models/branch');
 let {authenticate} = require('../middleware/authenticate');
 
-/* Create new staff. */
+/* Create new branch. */
 router.post('/create', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('101')){
+    if(!req.user.permissions.includes('105')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to create new staff."
+            "message": "This user does not have perrmission to create new branch."
         });
     }else{
-        let body = _.pick(req.body, ['name','email','phoneNumber','permissions','password']);
-        if(!body.name || !body.email || !body.phoneNumber || !body.permissions || !body.password){
+        let body = _.pick(req.body, ['name','phoneNumber','address','type']);
+        if(!body.name || !body.phoneNumber || !body.address || !body.type){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, email, phoneNumber, permissions, password) fields are required."
+                "message": "Missing data, (name, phoneNumber, address, type) fields are required."
             });
         }else{
             body.active = true;
-            body.is_login = false;
             if(req.user.type == 'admin'){
                 body.parent = req.user._id;
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            body.type = 'staff';
-            let permissionsArr = body.permissions.split(",");
-            let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
-            let resultArr = [];
-            //if can create staff the can view staff
-            if(permissionsArr.includes('101') && !permissionsArr.includes('100')){permissionsArr.push('100')}
-            if(permissionsArr.includes('102') && !permissionsArr.includes('100')){permissionsArr.push('100')}
-            if(permissionsArr.includes('103') && !permissionsArr.includes('100')){permissionsArr.push('100')}
-            permissionsArr.map((perm)=>{
-                if(fullPermsArr.includes(perm)){
-                    if(!resultArr.includes(perm)){
-                        resultArr.push(perm);
-                    }
-                }
-            })
-            body.permissions = resultArr;
-            let newUserData = new User(body);
-            newUserData.save().then((newUser) => {
-                let token = newUser.generateAuthToken();
-                
-                return res.header('x-auth', token).status(201).send({
+            let newBranchData = new Branch(body);
+            newBranchData.save().then((newBranch) => {                
+                return res.status(201).send({
                     "status": 1,
-                    "data": {"userData": newUser}
+                    "data": {"branchData": newBranch}
                 });
             }).catch((e) => {
                 if(e.code){
                     if(e.code == 11000){
-                        if(e.errmsg.includes("email")){
-                            res.status(400).send({
-                                "status": 0,
-                                "message": "This email is already exist."
-                            });
-                        }else if(e.errmsg.includes("phoneNumber")){
+                        if(e.errmsg.includes("phoneNumber")){
                             res.status(400).send({
                                 "status": 0,
                                 "message": "This phone number is already exist."
@@ -110,8 +87,6 @@ router.post('/edit', authenticate, function(req, res, next) {
                 let permissionsArr = body.permissions.split(",");
                 //if can create staff the can view staff
                 if(permissionsArr.includes('101') && !permissionsArr.includes('100')){permissionsArr.push('100')}
-                if(permissionsArr.includes('102') && !permissionsArr.includes('100')){permissionsArr.push('100')}
-                if(permissionsArr.includes('103') && !permissionsArr.includes('100')){permissionsArr.push('100')}
                 let fullPermsArr = Object.keys(JSON.parse(process.env['permisitions']));
                 let resultArr = [];
                 permissionsArr.map((perm)=>{

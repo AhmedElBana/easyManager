@@ -44,7 +44,7 @@ let UserSchema = new mongoose.Schema({
 		required: true
 	},
 	permissions: {
-		//required: true,
+		required: true,
 		type: Array
 	},
 	active: {
