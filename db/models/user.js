@@ -53,8 +53,10 @@ let UserSchema = new mongoose.Schema({
 	},
 	parent: {
 		type: String,
-		trim: true,
-		unique: true
+		trim: true
+	},
+	branches: {
+		type: Array
 	},
 	code: {
 		type: String,
@@ -69,7 +71,7 @@ let UserSchema = new mongoose.Schema({
 UserSchema.methods.toJSON = function(){
 	let User = this;
 	let UserObject = User.toObject();
-	return _.pick(UserObject, ['_id','name','email','phoneNumber','type','permissions','active','parent']);
+	return _.pick(UserObject, ['_id','name','email','phoneNumber','type','permissions','active','parent','branches']);
 }
 
 UserSchema.methods.generateAuthToken = function(){

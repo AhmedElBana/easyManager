@@ -35,8 +35,7 @@ let BranchSchema = new mongoose.Schema({
 	},
 	parent: {
 		type: String,
-		trim: true,
-		unique: true
+		trim: true
 	}
 });
 

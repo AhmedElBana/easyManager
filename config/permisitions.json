@@ -6,5 +6,8 @@
     "104":"can view branch",
     "105":"can create branch",
     "106":"can edit branch",
-    "107":"can deactivate branch"
+    "107":"can deactivate branch",
+    "108":"can create category",
+    "109":"can edit category",
+    "110":"can delete category"
 }

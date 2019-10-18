@@ -6,6 +6,8 @@ var logger = require('morgan');
 var usersRouter = require('./routes/users');
 var staffRouter = require('./routes/staff');
 var branchRouter = require('./routes/branch');
+var categoryRouter = require('./routes/category')
+var subCategoryRouter = require('./routes/subCategory')
 
 var app = express();
 
@@ -30,5 +32,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/users', usersRouter);
 app.use('/api/staff', staffRouter);
 app.use('/api/branch', branchRouter);
+app.use('/api/category', categoryRouter);
+app.use('/api/subCategory', subCategoryRouter);
 
 module.exports = app;
