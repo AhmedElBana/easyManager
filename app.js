@@ -8,6 +8,7 @@ var staffRouter = require('./routes/staff');
 var branchRouter = require('./routes/branch');
 var categoryRouter = require('./routes/category')
 var subCategoryRouter = require('./routes/subCategory')
+var featureRouter = require('./routes/feature')
 
 var app = express();
 
@@ -34,5 +35,6 @@ app.use('/api/staff', staffRouter);
 app.use('/api/branch', branchRouter);
 app.use('/api/category', categoryRouter);
 app.use('/api/subCategory', subCategoryRouter);
+app.use('/api/feature', featureRouter);
 
 module.exports = app;

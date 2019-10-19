@@ -9,5 +9,9 @@
     "107":"can deactivate branch",
     "108":"can create category",
     "109":"can edit category",
-    "110":"can delete category"
+    "110":"can delete category",
+    "111":"can view feature",
+    "112":"can create feature",
+    "113":"can edit feature",
+    "114":"can delete feature"
 }
