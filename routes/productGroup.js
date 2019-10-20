@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {ProductGroup} = require('../db/models/productGroup');
+let {Product} = require('../db/models/product');
 let {authenticate} = require('../middleware/authenticate');
 
 /* Create new feature. */

@@ -48,17 +48,13 @@ let ProductGroupSchema = new mongoose.Schema({
 		required: true,
 		type: String,
 		trim: true
-	},
-	active: {
-		type: Boolean,
-		required: true
 	}
 });
 
 ProductGroupSchema.methods.toJSON = function(){
 	let ProductGroup = this;
 	let ProductGroupObject = ProductGroup.toObject();
-	return _.pick(ProductGroupObject, ['_id','name','category_id','subCategory_id','description','features','images','rate','createdAt','parent','active']);
+	return _.pick(ProductGroupObject, ['_id','name','category_id','subCategory_id','description','features','images','rate','createdAt','parent']);
 }
 
 ProductGroupSchema.plugin(mongoosePaginate);
