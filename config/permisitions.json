@@ -13,5 +13,9 @@
     "111":"can view feature",
     "112":"can create feature",
     "113":"can edit feature",
-    "114":"can delete feature"
+    "114":"can delete feature",
+    "115":"can view product",
+    "116":"can create product",
+    "117":"can edit product",
+    "118":"can deactivate product"
 }

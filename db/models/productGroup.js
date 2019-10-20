@@ -27,7 +27,7 @@ let ProductGroupSchema = new mongoose.Schema({
 		trim: true
 	},
 	features: {
-		type: Map,
+		type:  mongoose.Schema.Types.Mixed,
 		of: String
 	},
 	images: {
@@ -48,13 +48,17 @@ let ProductGroupSchema = new mongoose.Schema({
 		required: true,
 		type: String,
 		trim: true
+	},
+	active: {
+		type: Boolean,
+		required: true
 	}
 });
 
 ProductGroupSchema.methods.toJSON = function(){
 	let ProductGroup = this;
 	let ProductGroupObject = ProductGroup.toObject();
-	return _.pick(ProductGroupObject, ['_id','name','category_id','subCategory_id','description','features','images','rate','createdAt','parent']);
+	return _.pick(ProductGroupObject, ['_id','name','category_id','subCategory_id','description','features','images','rate','createdAt','parent','active']);
 }
 
 ProductGroupSchema.plugin(mongoosePaginate);

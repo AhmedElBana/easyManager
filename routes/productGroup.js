@@ -3,21 +3,64 @@ var router = express.Router();
 const _ = require('lodash');
 let {ProductGroup} = require('../db/models/productGroup');
 let {Product} = require('../db/models/product');
+let {Branch} = require('../db/models/branch');
+let {Category} = require('../db/models/category');
+let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
 
-/* Create new feature. */
-router.post('/create', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('112')){
+var multer  = require('multer')
+const storage = multer.diskStorage({
+    destination: function(req, file, cb){
+        cb(null, './uploads/');
+    },
+    filename: function(req, file, cb){
+        cb(null, new Date().toISOString() + file.originalname);
+    }
+})
+const fileFilter = (req, file, cb)=>{
+    // if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
+    //     cb(null, true);
+    // }else{
+    //     cb(null, false);
+    // }
+    var type = file.mimetype;
+    var typeArray = type.split("/");
+    if (typeArray[0] == "image") {
+        cb(null, true);
+    }else {
+        cb(null, false);
+    }
+};
+var upload = multer({
+    storage: storage, 
+    limits: {
+        fileSize: 1024 * 1024 * 5 
+    },
+    fileFilter: fileFilter
+});
+
+/* Create new productGroup. */
+router.post('/create', authenticate, upload.array('photos', 12), function(req, res, next) {
+    if(!req.user.permissions.includes('116')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to create new feature."
+            "message": "This user does not have perrmission to create new product."
         });
     }else{
-        let body = _.pick(req.body, ['name','options']);
-        if(!body.name){
+        let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','description','features','images','productMap']);
+        
+        let images = [];
+        if(req.files){
+            if(req.files.length > 0){
+                req.files.map((photo)=>{
+                    images.push("https://" + req.headers.host + "/" + photo.path)
+                })
+            }
+        }
+        if(!body.name || !body.branch_id || !body.category_id || !body.description || !body.features || !body.productMap){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, options) fields are required."
+                "message": "Missing data, (name, branch_id, category_id, description, features, productMap) fields are required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -26,44 +69,113 @@ router.post('/create', authenticate, function(req, res, next) {
                 body.parent = req.user.parent;
             }
             body.active = true;
-            body.options = body.options.split(",")
-            let newFeatureData = new Feature(body);
-            newFeatureData.save().then((newFeature) => {                
-                return res.status(201).send({
-                    "status": 1,
-                    "data": {"featureData": newFeature}
+            body.features = JSON.parse(body.features);
+            body.productMap = JSON.parse(body.productMap);
+            let FullBranchesArr = [];
+            Branch.find({parent: body.parent})
+            .then((branches) => {
+                branches.map((branch)=>{
+                    FullBranchesArr.push(branch._id.toString())
                 });
-            }).catch((e) => {
-                if(e.code){
-                    if(e.code == 11000){
-                        if(e.errmsg.includes("phoneNumber")){
-                            res.status(400).send({
-                                "status": 0,
-                                "message": "This phone number is already exist."
-                            });
-                        }else{
-                            res.status(400).send({
-                                "status": 0,
-                                "message": e
-                            });
-                        }
-                    }else{
-                        res.status(400).send({
-                            "status": 0,
-                            "message": e
-                        });
-                    }
-                }else{
+                if(!FullBranchesArr.includes(body.branch_id)){
                     res.status(400).send({
                         "status": 0,
-                        "message": e
+                        "message": "you don't have any branch with this branch_id."
+                    });
+                }else{
+                    let FullcategoriesArr = [];
+                    Category.find({parent: body.parent})
+                    .then((categories) => {
+                        categories.map((category)=>{
+                            FullcategoriesArr.push(category._id.toString())
+                        });
+                        if(!FullcategoriesArr.includes(body.category_id)){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "you don't have any category with this category_id."
+                            });
+                        }else{
+                            if(body.subCategory_id){
+                                let FullSubCategoryArr = [];
+                                SubCategory.find({parent: body.parent})
+                                .then((subCategories) => {
+                                    subCategories.map((subCategory)=>{
+                                        FullSubCategoryArr.push(subCategory._id.toString())
+                                    });
+                                    if(!FullSubCategoryArr.includes(body.subCategory_id)){
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": "you don't have any subCategory with this subCategory_id."
+                                        });
+                                    }else{
+                                        createProductGroup(res,body);
+                                    }
+                                },(e) => {
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": "Error happen while query subCategory data."
+                                    });
+                                });
+                            }else{
+                                createProductGroup(res,body);
+                            }
+                        }
+                    },(e) => {
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "Error happen while query category data."
+                        });
                     });
                 }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "Error happen while query branches data."
+                });
             });
         }
     }
 });
-
+var createProductGroup = (res,body) => {
+    let newProductGroup = {
+        "name": body.name,
+        "category_id": body.category_id,
+        "description": body.description,
+        "features": body.features,
+        "createdAt": new Date(),
+        "parent": body.parent,
+        "active": true,
+        "rate": 0
+    }
+    if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
+    //----------------- >>>>> product group images
+    let newProductGroupData = new ProductGroup(newProductGroup);
+    newProductGroupData.save().then((newProductGroup) => {                
+        return res.status(201).send({
+            "status": 1,
+            "data": {"productGroupData": newProductGroup}
+        });
+    }).catch((e) => {
+        if(e.code){
+            if(e.code == 11000){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }
+        }else{
+            res.status(400).send({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
 /* edit feature. */
 router.post('/edit', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('113')){
