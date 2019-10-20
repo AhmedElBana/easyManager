@@ -27,7 +27,8 @@ let ProductGroupSchema = new mongoose.Schema({
 		trim: true
 	},
 	features: {
-		type: Map
+		type: Map,
+		of: String
 	},
 	images: {
 		type: Array
