@@ -9,6 +9,7 @@ var branchRouter = require('./routes/branch');
 var categoryRouter = require('./routes/category')
 var subCategoryRouter = require('./routes/subCategory')
 var featureRouter = require('./routes/feature')
+var productGroupRouter = require('./routes/productGroup')
 
 var app = express();
 
@@ -36,5 +37,6 @@ app.use('/api/branch', branchRouter);
 app.use('/api/category', categoryRouter);
 app.use('/api/subCategory', subCategoryRouter);
 app.use('/api/feature', featureRouter);
+app.use('/api/productGroup', productGroupRouter);
 
 module.exports = app;
