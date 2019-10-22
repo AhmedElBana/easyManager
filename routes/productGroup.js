@@ -8,13 +8,18 @@ let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
 
+
+var mongo = require('mongodb'),
+    ObjectID = mongo.ObjectID;
+
 var multer  = require('multer')
 const storage = multer.diskStorage({
     destination: function(req, file, cb){
         cb(null, './uploads/');
     },
     filename: function(req, file, cb){
-        cb(null, new Date().toISOString() + file.originalname);
+        //cb(null, new Date().toISOString() + file.originalname);
+        cb(null, new ObjectID().toString() + file.originalname);
     }
 })
 const fileFilter = (req, file, cb)=>{
@@ -40,23 +45,25 @@ var upload = multer({
 });
 
 /* Create new productGroup. */
-router.post('/create', authenticate, upload.array('photos', 12), function(req, res, next) {
+router.post('/create', authenticate, upload.array('image', 12), function(req, res, next) {
     if(!req.user.permissions.includes('116')){
         res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to create new product."
         });
     }else{
-        let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','description','features','images','productMap']);
+        let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','description','features','image','productMap']);
         
         let images = [];
         if(req.files){
+            console.log(req.files);
             if(req.files.length > 0){
                 req.files.map((photo)=>{
                     images.push("https://" + req.headers.host + "/" + photo.path)
                 })
             }
         }
+        body.images = images;
         if(!body.name || !body.branch_id || !body.category_id || !body.description || !body.features || !body.productMap){
             res.status(400).send({
                 "status": 0,
@@ -144,13 +151,15 @@ var createProductGroup = (res,body) => {
         "features": body.features,
         "createdAt": new Date(),
         "parent": body.parent,
+        "images": body.images,
         "active": true,
         "rate": 0
     }
     if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
     //----------------- >>>>> product group images
     let newProductGroupData = new ProductGroup(newProductGroup);
-    newProductGroupData.save().then((newProductGroup) => {                
+    newProductGroupData.save().then((newProductGroup) => {
+        console.log(body);       
         return res.status(201).send({
             "status": 1,
             "data": {"productGroupData": newProductGroup}
