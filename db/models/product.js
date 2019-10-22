@@ -40,13 +40,17 @@ let ProductSchema = new mongoose.Schema({
 		required: true,
 		type: String,
 		trim: true
+	},
+	active: {
+		type: Boolean,
+		required: true
 	}
 });
 
 ProductSchema.methods.toJSON = function(){
 	let Product = this;
 	let ProductObject = Product.toObject();
-	return _.pick(ProductObject, ['_id','name','group_id','price','quantity','features','images','map','parent']);
+	return _.pick(ProductObject, ['_id','name','group_id','price','quantity','features','images','map','parent','active']);
 }
 
 ProductSchema.plugin(mongoosePaginate);

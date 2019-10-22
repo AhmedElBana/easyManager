@@ -176,7 +176,8 @@ var createProductGroup = (res,body) => {
                     "quantity": product.quantity,
                     "features": product.features,
                     "map": mapObj,
-                    "parent": body.parent
+                    "parent": body.parent,
+                    "active": true
                 }
                 finalProductsArr.push(finalProduct);
             })
@@ -190,7 +191,8 @@ var createProductGroup = (res,body) => {
                 "price": body.price,
                 "quantity": body.quantity,
                 "map": mapObj,
-                "parent": body.parent
+                "parent": body.parent,
+                "active": true
             }
             createProduct(res, finalProduct);
         }
@@ -335,44 +337,126 @@ router.post('/edit', authenticate, function(req, res, next) {
 
 /* list feature. */
 router.get('/list', authenticate, function(req, res, next) {
-    let page;
-    if(req.query.page){page = req.query.page;}else{page = 1;}
-    let page_size;
-    if(req.query.page_size){page_size = req.query.page_size;}else{page_size = 10;}
-    const options = {
-        page: page,
-        limit: page_size,
-        sort: { createdAt: -1 },
-        collation: {
-        locale: 'en'
-        }
-    };
-    let filters;
-    if(req.user.type == 'admin'){
-        filters = {parent: req.user._id};
-    }else if(req.user.type == 'staff'){
-        filters = {parent: req.user.parent};
-    }
-    Feature.paginate(filters, options, function(err, result) {
-        let next;
-        if(result.hasNextPage){
-            next = "https://" + req.headers.host + "/api/category/feature?page=" + result.nextPage + "&page_size=" + page_size;
-        }else{next = null;}
-        let prev;
-        if(result.hasPrevPage){
-            prev = "https://" + req.headers.host + "/api/category/feature?page=" + result.prevPage + "&page_size=" + page_size;
-        }else{prev = null;}
-        let data = {
-            total: result.totalDocs,
-            next: next,
-            prev: prev,
-            result: result.docs
-        }
-        return res.send({
-            "status": 1,
-            "data": {...data}
+    if(!req.user.permissions.includes('115')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to view products."
         });
-    });
+    }else{
+        let page;
+        if(req.query.page){page = req.query.page;}else{page = 1;}
+        let page_size;
+        if(req.query.page_size){page_size = req.query.page_size;}else{page_size = 10;}
+        const options = {
+            page: page,
+            limit: page_size,
+            sort: { createdAt: -1 },
+            collation: {
+            locale: 'en'
+            }
+        };
+        let filters;
+        if(req.user.type == 'admin'){
+            filters = {parent: req.user._id};
+        }else if(req.user.type == 'staff'){
+            filters = {parent: req.user.parent};
+        }
+        if(req.query.name){filters.name = new RegExp(req.query.name, 'i')}
+        if(req.query._id){filters._id = req.query._id}
+        if(req.query.category_id){filters.category_id = req.query.category_id}
+        if(req.query.subCategory_id){filters.subCategory_id = req.query.subCategory_id}
+        ProductGroup.paginate(filters, options, function(err, result) {
+            let next;
+            if(result.hasNextPage){
+                next = "https://" + req.headers.host + "/api/category/productGroup?page=" + result.nextPage + "&page_size=" + page_size;
+            }else{next = null;}
+            let prev;
+            if(result.hasPrevPage){
+                prev = "https://" + req.headers.host + "/api/category/productGroup?page=" + result.prevPage + "&page_size=" + page_size;
+            }else{prev = null;}
+            let data = {
+                total: result.totalDocs,
+                next: next,
+                prev: prev,
+                result: result.docs
+            }
+            return res.send({
+                "status": 1,
+                "data": {...data}
+            });
+        });
+    }
+});
+router.get('/fullProduct', authenticate, function(req, res, next){
+    if(!req.user.permissions.includes('115')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to view products."
+        });
+    }else{
+        if(!req.query._id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (_id) field is required."
+            });
+        }else{
+            let parent;
+            if(req.user.type == 'admin'){
+                parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                parent = req.user.parent;
+            }
+            ProductGroup.findOne({parent: parent, _id: req.query._id})
+            .then((productGroup) => {
+                if(!productGroup){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any product group with this _id."
+                    });
+                }else{
+                    let fullProduct = {...productGroup._doc}
+                    Product.find({parent: parent, group_id: fullProduct._id})
+                    .then((products) => {
+                        fullProduct.products = products;
+                        return res.send({
+                            "status": 1,
+                            "data": {...fullProduct}
+                        });
+                    },(e) => {
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't find any product group with this _id."
+                        });
+                    });
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any product group with this _id."
+                });
+            });
+            // let FullSubCategoryArr = [];
+            // SubCategory.find({parent: body.parent})
+            // .then((subCategories) => {
+            //     subCategories.map((subCategory)=>{
+            //         FullSubCategoryArr.push(subCategory._id.toString())
+            //     });
+            //     if(!FullSubCategoryArr.includes(body.subCategory_id)){
+            //         res.status(400).send({
+            //             "status": 0,
+            //             "message": "you don't have any subCategory with this subCategory_id."
+            //         });
+            //     }else{
+            //         createProductGroup(res,body);
+            //     }
+            // },(e) => {
+            //     res.status(400).send({
+            //         "status": 0,
+            //         "message": "Error happen while query subCategory data."
+            //     });
+            // });
+        }
+    }
 });
 
 module.exports = router;
