@@ -52,7 +52,7 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
             "message": "This user does not have perrmission to create new product."
         });
     }else{
-        let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','description','features','image','productMap']);
+        let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
         
         let images = [];
         if(req.files){
@@ -66,10 +66,10 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
             }
         }
         body.images = images;
-        if(!body.name || !body.branch_id || !body.category_id || !body.description || !body.features || !body.productMap){
+        if(!body.name || !body.branch_id || !body.category_id || !body.price || !body.quantity || !body.description){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, branch_id, category_id, description, features, productMap) fields are required."
+                "message": "Missing data, (name, branch_id, category_id, price, quantity, description) fields are required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -79,7 +79,7 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
             }
             body.active = true;
             body.features = JSON.parse(body.features);
-            body.productMap = JSON.parse(body.productMap);
+            if(body.productMap){body.productMap = JSON.parse(body.productMap);}
             let FullBranchesArr = [];
             Branch.find({parent: body.parent})
             .then((branches) => {
@@ -158,13 +158,96 @@ var createProductGroup = (res,body) => {
         "rate": 0
     }
     if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
-    //----------------- >>>>> product group images
     let newProductGroupData = new ProductGroup(newProductGroup);
     newProductGroupData.save().then((newProductGroup) => {
-        console.log(body);       
+        if(body.productMap && body.productMap.length >= 1){
+            let finalProductsArr = [];
+            body.productMap.map((product)=>{
+                let mapObj = {};
+                mapObj[body.branch_id] = product.quantity;
+                let name = body.name;
+                Object.keys(product.features).map(function(key, index) {
+                     name += "-" + product.features[key]
+                });
+                let finalProduct = {
+                    "group_id": newProductGroup._id,
+                    "name": name,
+                    "price": product.price,
+                    "quantity": product.quantity,
+                    "features": product.features,
+                    "map": mapObj,
+                    "parent": body.parent
+                }
+                finalProductsArr.push(finalProduct);
+            })
+            createManyProducts(res, finalProductsArr);
+        }else{
+            let mapObj = {};
+            mapObj[body.branch_id] = body.quantity;
+            let finalProduct = {
+                "group_id": newProductGroup._id,
+                "name": body.name,
+                "price": body.price,
+                "quantity": body.quantity,
+                "map": mapObj,
+                "parent": body.parent
+            }
+            createProduct(res, finalProduct);
+        }
+    }).catch((e) => {
+        if(e.code){
+            if(e.code == 11000){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }
+        }else{
+            res.status(400).send({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
+var createProduct = (res, product) => {
+    let newProductData = new Product(product);
+    newProductData.save().then((newProduct) => {
         return res.status(201).send({
             "status": 1,
-            "data": {"productGroupData": newProductGroup}
+            "data": {"productData": newProduct}
+        });
+    }).catch((e) => {
+        if(e.code){
+            if(e.code == 11000){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }
+        }else{
+            res.status(400).send({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
+var createManyProducts = (res, products) => {
+    Product.insertMany(products).then((newProducts) => {
+        return res.status(201).send({
+            "status": 1,
+            "data": {"productData": newProducts}
         });
     }).catch((e) => {
         if(e.code){

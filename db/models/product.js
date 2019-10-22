@@ -12,6 +12,12 @@ let ProductSchema = new mongoose.Schema({
 		minlenght: 2,
 		trim: true
 	},
+	name: {
+		type: String,
+		required: true,
+		minlenght: 2,
+		trim: true
+	},
 	price: {
 		type: Number,
 		min: 0,
@@ -23,11 +29,11 @@ let ProductSchema = new mongoose.Schema({
 		required: true
 	},
 	features: {
-		type: Map,
+		type:  mongoose.Schema.Types.Mixed,
 		of: String
 	},
 	map: {
-		type: Map,
+		type:  mongoose.Schema.Types.Mixed,
 		of: String
 	},
 	parent: {
@@ -40,7 +46,7 @@ let ProductSchema = new mongoose.Schema({
 ProductSchema.methods.toJSON = function(){
 	let Product = this;
 	let ProductObject = Product.toObject();
-	return _.pick(ProductObject, ['_id','group_id','price','quantity','features','images','map','parent']);
+	return _.pick(ProductObject, ['_id','name','group_id','price','quantity','features','images','map','parent']);
 }
 
 ProductSchema.plugin(mongoosePaginate);
