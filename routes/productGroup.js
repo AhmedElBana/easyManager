@@ -56,11 +56,13 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
         
         let images = [];
         if(req.files){
-            console.log(req.files);
+            let imagesSize = 0;
             if(req.files.length > 0){
                 req.files.map((photo)=>{
+                    imagesSize += photo.size;
                     images.push("https://" + req.headers.host + "/" + photo.path)
                 })
+                body.images_size = imagesSize * (1/8000000);
             }
         }
         body.images = images;
