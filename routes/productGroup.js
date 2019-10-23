@@ -145,6 +145,88 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
         }
     }
 });
+router.post('/singleAdd', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('116')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to create new product."
+        });
+    }else{
+        let body = _.pick(req.body, ['_id','branch_id','quantity']);
+        
+        if(!body._id || !body.branch_id || !body.quantity){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (_id, branch_id, quantity) fields are required."
+            });
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            Product.findOne({_id: body._id, parent: body.parent})
+            .then((product) => {
+                if(!product){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "you don't have any product with this _id."
+                    });
+                }else{
+                    Branch.findOne({_id: body.branch_id, parent: body.parent})
+                    .then((branch) => {
+                        if(!branch){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "you don't have any branch with this branch_id."
+                            });
+                        }else{
+                            if(isNaN(body.quantity)){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "wrong quantity value, must be integer."
+                                });
+                            }else{
+                                let oldMap = product.map;
+                                if(Object.keys(oldMap).includes(body.branch_id)){
+                                    oldMap[body.branch_id] += parseInt(body.quantity);
+                                }else{
+                                    oldMap[body.branch_id] = parseInt(body.quantity);
+                                }
+                                let newMap = oldMap;
+                                let query = {_id: body._id, parent: body.parent};
+                                let newData = {map: newMap}
+                                Product.findOneAndUpdate(query,newData, { new: true })
+                                .then(updatedProduct => {
+                                    return res.send({
+                                        "status": 1,
+                                        "data": {"productData": updatedProduct}
+                                    });
+                                })
+                                .catch(err => {
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": "error while query product data."
+                                    });
+                                }); 
+                            }
+                        }
+                    },(e) => {
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "you don't have any branch with this branch_id."
+                        });
+                    });
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "you don't have any product with this _id."
+                });
+            });
+        }
+    }
+});
 var createProductGroup = (res,body) => {
     let newProductGroup = {
         "name": body.name,
