@@ -435,28 +435,54 @@ router.get('/fullProduct', authenticate, function(req, res, next){
                     "message": "can't find any product group with this _id."
                 });
             });
-            // let FullSubCategoryArr = [];
-            // SubCategory.find({parent: body.parent})
-            // .then((subCategories) => {
-            //     subCategories.map((subCategory)=>{
-            //         FullSubCategoryArr.push(subCategory._id.toString())
-            //     });
-            //     if(!FullSubCategoryArr.includes(body.subCategory_id)){
-            //         res.status(400).send({
-            //             "status": 0,
-            //             "message": "you don't have any subCategory with this subCategory_id."
-            //         });
-            //     }else{
-            //         createProductGroup(res,body);
-            //     }
-            // },(e) => {
-            //     res.status(400).send({
-            //         "status": 0,
-            //         "message": "Error happen while query subCategory data."
-            //     });
-            // });
         }
     }
 });
-
+router.get('/singleProduct', authenticate, function(req, res, next){
+    if(!req.user.permissions.includes('115')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to view products."
+        });
+    }else{
+        if(!req.query._id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (_id) field is required."
+            });
+        }else{
+            let parent;
+            if(req.user.type == 'admin'){
+                parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                parent = req.user.parent;
+            }
+            let filters = {parent: parent, _id: req.query._id}
+            if(req.query.branch_id){
+                filters.$where = 'function() { return Object.keys(this.map).includes("' + req.query.branch_id + '");}';
+                // filters.$where = function(){return Object.keys(this.map).includes(req.query.branch_id)}
+            }
+            Product.findOne(filters)
+            .then((productGroup) => {
+                if(!productGroup){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any product with this _id."
+                    });
+                }else{
+                    return res.send({
+                        "status": 1,
+                        "data": productGroup
+                    });
+                }
+            },(e) => {
+                console.log(e)
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any product with this _id."
+                });
+            });
+        }
+    }
+});
 module.exports = router;
