@@ -238,6 +238,7 @@ router.post('/admin/create', function(req, res, next) {
             let storeObj = {
                 "name": body.storeName,
                 "phoneNumber": body.storePhoneNumber,
+                "imagesStorageLimit": 50,
                 "imagesStorage": 0,
                 "availableEmails": 0,
                 "usedEmails": 0,

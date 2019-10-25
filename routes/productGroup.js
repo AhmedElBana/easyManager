@@ -1,3 +1,4 @@
+const fs = require('fs');
 var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
@@ -119,7 +120,7 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
                                             "message": "you don't have any subCategory with this subCategory_id."
                                         });
                                     }else{
-                                        createProductGroup(res,body);
+                                        calcStorage(res,body);
                                     }
                                 },(e) => {
                                     res.status(400).send({
@@ -128,7 +129,7 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
                                     });
                                 });
                             }else{
-                                createProductGroup(res,body);
+                                calcStorage(res,body);
                             }
                         }
                     },(e) => {
@@ -147,6 +148,70 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
         }
     }
 });
+var calcStorage = (res,body) => {
+    let storeQuery = {parent: body.parent}
+        storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';
+        Store.findOneAndUpdate(
+            storeQuery,
+            {$inc : {'imagesStorage' : body.images_size}}, 
+            { new: true }, 
+            (e, response) => {
+            if(e){
+                console.log(e)
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": e.message
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error while updating store data."
+                    });
+                }
+            }else{
+                if(response == null){
+                    deleteImages(body.images);
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "you don't have enough space to uploud product images."
+                    });
+                }else{
+                    createProductGroup(res,body);
+                }
+            }
+        })
+}
+var deleteImages = (imagesArr) => {
+    let startIndex = imagesArr[0].indexOf('/uploads/');
+    let filesArr = [];
+    imagesArr.map((url)=>{
+        filesArr.push('.' + url.substring(startIndex))
+    })
+    //var files = ['./uploads/5db2c1f6e52ea52139ecfe1bScreenshot from 2019-01-02 22-34-54.png', './uploads/5db2c1f6e52ea52139ecfe1cScreenshot from 2019-01-02 22-34-54.png'];
+    deleteFiles(filesArr, function(err) {
+        // if (err) {
+        // console.log(err);
+        // } else {
+        // console.log('all files removed');
+        // }
+    });
+}
+function deleteFiles(files, callback){
+    var i = files.length;
+    files.forEach(function(filepath){
+      fs.unlink(filepath, function(err) {
+        i--;
+        if (err) {
+          callback(err);
+          return;
+        } else if (i <= 0) {
+          callback(null);
+        }
+      });
+    });
+}
+  
 var createProductGroup = (res,body) => {
     let newProductGroup = {
         "name": body.name,
@@ -162,59 +227,42 @@ var createProductGroup = (res,body) => {
     if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
     let newProductGroupData = new ProductGroup(newProductGroup);
     newProductGroupData.save().then((newProductGroup) => {
-        let storeQuery = {parent: body.parent}
-        Store.findOneAndUpdate(storeQuery,{$inc : {'imagesStorage' : body.images_size}}, { new: true }, (e, response) => {
-            if(e){
-                if(e.name && e.name == "CastError"){
-                    res.status(400).send({
-                        "status": 0,
-                        "message": e.message
-                    });
-                }else{
-                    res.status(400).send({
-                        "status": 0,
-                        "message": "error while updating store data."
-                    });
+        if(body.productMap && body.productMap.length >= 1){
+            let finalProductsArr = [];
+            body.productMap.map((product)=>{
+                let mapObj = {};
+                mapObj[body.branch_id] = product.quantity;
+                let name = body.name;
+                Object.keys(product.features).map(function(key, index) {
+                        name += "-" + product.features[key]
+                });
+                let finalProduct = {
+                    "group_id": newProductGroup._id,
+                    "name": name,
+                    "price": product.price,
+                    "quantity": product.quantity,
+                    "features": product.features,
+                    "map": mapObj,
+                    "parent": body.parent,
+                    "active": true
                 }
-            }else{
-                if(body.productMap && body.productMap.length >= 1){
-                    let finalProductsArr = [];
-                    body.productMap.map((product)=>{
-                        let mapObj = {};
-                        mapObj[body.branch_id] = product.quantity;
-                        let name = body.name;
-                        Object.keys(product.features).map(function(key, index) {
-                                name += "-" + product.features[key]
-                        });
-                        let finalProduct = {
-                            "group_id": newProductGroup._id,
-                            "name": name,
-                            "price": product.price,
-                            "quantity": product.quantity,
-                            "features": product.features,
-                            "map": mapObj,
-                            "parent": body.parent,
-                            "active": true
-                        }
-                        finalProductsArr.push(finalProduct);
-                    })
-                    createManyProducts(res, finalProductsArr);
-                }else{
-                    let mapObj = {};
-                    mapObj[body.branch_id] = body.quantity;
-                    let finalProduct = {
-                        "group_id": newProductGroup._id,
-                        "name": body.name,
-                        "price": body.price,
-                        "quantity": body.quantity,
-                        "map": mapObj,
-                        "parent": body.parent,
-                        "active": true
-                    }
-                    createProduct(res, finalProduct);
-                }
+                finalProductsArr.push(finalProduct);
+            })
+            createManyProducts(res, finalProductsArr);
+        }else{
+            let mapObj = {};
+            mapObj[body.branch_id] = body.quantity;
+            let finalProduct = {
+                "group_id": newProductGroup._id,
+                "name": body.name,
+                "price": body.price,
+                "quantity": body.quantity,
+                "map": mapObj,
+                "parent": body.parent,
+                "active": true
             }
-        })
+            createProduct(res, finalProduct);
+        }
     }).catch((e) => {
         console.log(e)
         if(e.code){
