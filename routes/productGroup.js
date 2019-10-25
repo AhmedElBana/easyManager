@@ -47,7 +47,7 @@ var upload = multer({
 });
 
 /* Create new productGroup. */
-router.post('/create', authenticate, upload.array('image', 12), function(req, res, next) {
+router.post('/create', authenticate, upload.array('image', 50), function(req, res, next) {
     if(!req.user.permissions.includes('116')){
         res.status(400).send({
             "status": 0,
@@ -150,37 +150,37 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
 });
 var calcStorage = (res,body) => {
     let storeQuery = {parent: body.parent}
-        storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';
-        Store.findOneAndUpdate(
-            storeQuery,
-            {$inc : {'imagesStorage' : body.images_size}}, 
-            { new: true }, 
-            (e, response) => {
-            if(e){
-                console.log(e)
-                if(e.name && e.name == "CastError"){
-                    res.status(400).send({
-                        "status": 0,
-                        "message": e.message
-                    });
-                }else{
-                    res.status(400).send({
-                        "status": 0,
-                        "message": "error while updating store data."
-                    });
-                }
+    storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';
+    Store.findOneAndUpdate(
+        storeQuery,
+        {$inc : {'imagesStorage' : body.images_size}}, 
+        { new: true }, 
+        (e, response) => {
+        if(e){
+            console.log(e)
+            if(e.name && e.name == "CastError"){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e.message
+                });
             }else{
-                if(response == null){
-                    deleteImages(body.images);
-                    res.status(400).send({
-                        "status": 0,
-                        "message": "you don't have enough space to uploud product images."
-                    });
-                }else{
-                    createProductGroup(res,body);
-                }
+                res.status(400).send({
+                    "status": 0,
+                    "message": "error while updating store data."
+                });
             }
-        })
+        }else{
+            if(response == null){
+                deleteImages(body.images);
+                res.status(400).send({
+                    "status": 0,
+                    "message": "you don't have enough space to uploud product images."
+                });
+            }else{
+                createProductGroup(res,body);
+            }
+        }
+    })
 }
 var deleteImages = (imagesArr) => {
     let startIndex = imagesArr[0].indexOf('/uploads/');
@@ -520,7 +520,201 @@ var editProductGroup = (res, body) =>{
         }
     })
 }
-
+router.post('/edit/addImages', authenticate, upload.array('image', 50), function(req, res, next) {
+    if(!req.user.permissions.includes('117')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to edit product."
+        });
+    }else{
+        let body = _.pick(req.body, ['_id']);
+        
+        let images = [];
+        body.images_size = 0;
+        if(req.files){
+            let imagesSize = 0;
+            if(req.files.length > 0){
+                req.files.map((photo)=>{
+                    imagesSize += photo.size;
+                    images.push("https://" + req.headers.host + "/" + photo.path)
+                })
+                body.images_size = imagesSize * (1/(1024*1024));//MB
+            }
+        }
+        body.images = images;
+        if(!body._id || images.length == 0){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (_id, image) fields are required."
+            });
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            editCalcStorage(res,body);
+        }
+    }
+});
+var editCalcStorage = (res,body) => {
+    let storeQuery = {parent: body.parent}
+        storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';
+        Store.findOneAndUpdate(
+            storeQuery,
+            {$inc : {'imagesStorage' : body.images_size}}, 
+            { new: true }, 
+            (e, response) => {
+            if(e){
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": e.message
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error while updating store data."
+                    });
+                }
+            }else{
+                if(response == null){
+                    deleteImages(body.images);
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "you don't have enough space to uploud product images."
+                    });
+                }else{
+                    saveImagesToGroup(res,body);
+                }
+            }
+        })
+}
+var saveImagesToGroup = (res,body) => {
+    ProductGroup.findOne({_id: body._id, parent: body.parent})
+        .then((productGroup) => {
+            if(!productGroup){
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any product group with this _id."
+                });
+            }else{
+                let fullImagesArr = [...productGroup.images,...body.images]
+                let query = {_id: body._id, parent: body.parent}
+                ProductGroup.findOneAndUpdate(
+                    query,
+                    {'images': fullImagesArr}, 
+                    { new: true }, 
+                    (e, response) => {
+                    if(e){
+                        console.log(e)
+                        if(e.name && e.name == "CastError"){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": e.message
+                            });
+                        }else{
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "error while updating store data."
+                            });
+                        }
+                    }else{
+                        return res.send({
+                            "status": 1,
+                            "data": {"ProductGroupData": response}
+                        });   
+                    }
+                })
+            }
+        },(e) => {
+            res.status(400).send({
+                "status": 0,
+                "message": "can't find any product group with this _id."
+            });
+        });
+}
+router.post('/edit/removeImages', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('117')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to edit product."
+        });
+    }else{
+        let body = _.pick(req.body, ['_id','images']);
+        if(!body._id || !body.images){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (_id, images) fields are required."
+            });
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            ProductGroup.findOne({_id: body._id, parent: body.parent})
+            .then((productGroup) => {
+                if(!productGroup){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any product group with this _id."
+                    });
+                }else{
+                    let oldImagesArr = [...productGroup.images];
+                    let newImagesArr = [];
+                    let removedImagesArr = [];
+                    oldImagesArr.map((image)=>{
+                        if(body.images.includes(image)){
+                            removedImagesArr.push(image);
+                        }else{
+                            newImagesArr.push(image);
+                        }
+                    })
+                    if(removedImagesArr.length >= 1){
+                        deleteImages(removedImagesArr);
+                        let query = {_id: body._id, parent: body.parent}
+                        ProductGroup.findOneAndUpdate(
+                            query,
+                            {'images': newImagesArr}, 
+                            { new: true }, 
+                            (e, response) => {
+                            if(e){
+                                console.log(e)
+                                if(e.name && e.name == "CastError"){
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": e.message
+                                    });
+                                }else{
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": "error while updating store data."
+                                    });
+                                }
+                            }else{
+                                return res.send({
+                                    "status": 1,
+                                    "data": {"ProductGroupData": response}
+                                });   
+                            }
+                        })
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't find any image of this inside your product group."
+                        });; 
+                    }
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any product group with this _id."
+                });
+            });
+        }
+    }
+});
 /* list products. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('115')){
