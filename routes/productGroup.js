@@ -211,7 +211,6 @@ function deleteFiles(files, callback){
       });
     });
 }
-  
 var createProductGroup = (res,body) => {
     let newProductGroup = {
         "name": body.name,
@@ -425,66 +424,102 @@ router.post('/singleAdd', authenticate, function(req, res, next) {
 
 /* edit products. */
 router.post('/edit', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('113')){
+    if(!req.user.permissions.includes('117')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to edit feature."
+            "message": "This user does not have perrmission to edit product."
         });
     }else{
-        let body = _.pick(req.body, ['feature_id','name','options','active']);
-        if(!body.feature_id){
+        let body = _.pick(req.body, ['productGroup_id','name','category_id','subCategory_id','description','features','active']);
+        if(!body.productGroup_id || !body.category_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (feature_id) field is required."
+                "message": "Missing data, (productGroup_id, category_id) field is required."
             });
         }else{
-            let user = req.user;
-            let updateBody = {};
-            if(req.body.name){updateBody.name = req.body.name}
-            if(req.body.options){updateBody.options = req.body.options}
-            if(req.body.active){updateBody.active = req.body.active}
-
-            let query;
             if(req.user.type == 'admin'){
-                query = {_id: body.feature_id, parent: req.user._id};
+                body.parent = req.user._id;
             }else if(req.user.type == 'staff'){
-                query = {_id: body.feature_id, parent: req.user.parent};
+                body.parent = req.user.parent;
             }
-            Feature.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-                if(e){
-                    if(e.errmsg && e.errmsg.includes("phoneNumber")){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "This phone number is already exist."
-                        });
-                    }else if(e.name && e.name == "CastError"){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": e.message
-                        });
-                    }else{
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "error while updating data."
-                        });
-                    }
+            Category.findOne({_id: body.category_id, parent: body.parent})
+            .then((category) => {
+                if(!category){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "you don't have any category with this category_id."
+                    });
                 }else{
-                    if(response == null){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "can't find any branch with this category_id."
+                    if(body.subCategory_id){
+                        SubCategory.findOne({_id: body.subCategory_id, category_id: body.category_id,parent: body.parent})
+                        .then((subCategory) => {
+                            if(!subCategory){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "you don't have any subCategory with this subCategory_id and category_id."
+                                });
+                            }else{
+                                editProductGroup(res,body);
+                            }
+                        },(e) => {
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "you don't have any subCategory with this subCategory_id and category_id."
+                            });
                         });
                     }else{
-                        return res.send({
-                            "status": 1,
-                            "data": {"categoryData": response}
-                        });   
+                        editProductGroup(res,body);
                     }
                 }
-            })
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "you don't have any category with this category_id."
+                });
+            });
+            
         }
     }
 });
+var editProductGroup = (res, body) =>{
+    let updateBody = {};
+    if(body.name){updateBody.name = body.name}
+    if(body.category_id){updateBody.category_id = body.category_id}
+    if(body.subCategory_id){updateBody.subCategory_id = body.subCategory_id}
+    if(body.description){updateBody.description = body.description}
+    if(body.features){console.log(body.features);updateBody.features = body.features}
+    if(body.active){updateBody.active = body.active}
+
+    let query;
+    query = {_id: body.productGroup_id, parent: body.parent};
+    ProductGroup.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            if(e.name && e.name == "CastError"){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e.message
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": "error while updating data."
+                });
+            }
+        }else{
+            if(response == null){
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any productGroup with this productGroup_id."
+                });
+            }else{
+                return res.send({
+                    "status": 1,
+                    "data": {"ProductGroupData": response}
+                });   
+            }
+        }
+    })
+}
 
 /* list products. */
 router.get('/list', authenticate, function(req, res, next) {
