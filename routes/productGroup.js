@@ -671,32 +671,63 @@ router.post('/edit/removeImages', authenticate, function(req, res, next) {
                             newImagesArr.push(image);
                         }
                     })
+                    console.log(removedImagesArr)
                     if(removedImagesArr.length >= 1){
-                        deleteImages(removedImagesArr);
-                        let query = {_id: body._id, parent: body.parent}
-                        ProductGroup.findOneAndUpdate(
-                            query,
-                            {'images': newImagesArr}, 
-                            { new: true }, 
-                            (e, response) => {
-                            if(e){
-                                console.log(e)
-                                if(e.name && e.name == "CastError"){
-                                    res.status(400).send({
-                                        "status": 0,
-                                        "message": e.message
-                                    });
-                                }else{
-                                    res.status(400).send({
-                                        "status": 0,
-                                        "message": "error while updating store data."
-                                    });
-                                }
+                        deleteImagesEdit(removedImagesArr, function(err, removedSize){
+                            if(err != null){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "error happen while remove images."
+                                });
                             }else{
-                                return res.send({
-                                    "status": 1,
-                                    "data": {"ProductGroupData": response}
-                                });   
+                                let storeQuery = {parent: body.parent}
+                                Store.findOneAndUpdate(
+                                    storeQuery,
+                                    {$inc : {'imagesStorage' : -removedSize}}, 
+                                    { new: true }, 
+                                    (e, response) => {
+                                    if(e){
+                                        console.log(e)
+                                        if(e.name && e.name == "CastError"){
+                                            res.status(400).send({
+                                                "status": 0,
+                                                "message": e.message
+                                            });
+                                        }else{
+                                            res.status(400).send({
+                                                "status": 0,
+                                                "message": "error while updating store data."
+                                            });
+                                        }
+                                    }else{
+                                        let query = {_id: body._id, parent: body.parent}
+                                        ProductGroup.findOneAndUpdate(
+                                            query,
+                                            {'images': newImagesArr}, 
+                                            { new: true }, 
+                                            (e, response) => {
+                                            if(e){
+                                                console.log(e)
+                                                if(e.name && e.name == "CastError"){
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": e.message
+                                                    });
+                                                }else{
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": "error while updating store data."
+                                                    });
+                                                }
+                                            }else{
+                                                return res.send({
+                                                    "status": 1,
+                                                    "data": {"ProductGroupData": response}
+                                                });   
+                                            }
+                                        })
+                                    }
+                                })
                             }
                         })
                     }else{
@@ -715,6 +746,38 @@ router.post('/edit/removeImages', authenticate, function(req, res, next) {
         }
     }
 });
+var deleteImagesEdit = (imagesArr,callback) => {
+    let startIndex = imagesArr[0].indexOf('/uploads/');
+    let filesArr = [];
+    imagesArr.map((url)=>{
+        filesArr.push('.' + url.substring(startIndex))
+    })
+    //var files = ['./uploads/5db2c1f6e52ea52139ecfe1bScreenshot from 2019-01-02 22-34-54.png', './uploads/5db2c1f6e52ea52139ecfe1cScreenshot from 2019-01-02 22-34-54.png'];
+    deleteFilesEdit(filesArr, function(err,imagesSize) {
+        if (err == null) {
+            callback(null,imagesSize * 1/(1024*1024))//MB
+        }else{
+            callback(err)
+        }
+    });    
+}
+function deleteFilesEdit(files, callback){
+    var i = files.length;
+    let imagesSize = 0;
+    files.forEach(function(filepath){
+        imagesSize += fs.statSync(filepath).size;
+      fs.unlink(filepath, function(err) {
+        i--;
+        if (err) {
+          callback(err);
+          return;
+        } else 
+        if (i <= 0) {
+          callback(null,imagesSize);
+        }
+      });
+    });
+}
 /* list products. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('115')){
