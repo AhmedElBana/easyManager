@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {ProductGroup} = require('../db/models/productGroup');
+let {Store} = require('../db/models/store');
 let {Product} = require('../db/models/product');
 let {Branch} = require('../db/models/branch');
 let {Category} = require('../db/models/category');
@@ -55,6 +56,7 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
         let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
         
         let images = [];
+        body.images_size = 0;
         if(req.files){
             let imagesSize = 0;
             if(req.files.length > 0){
@@ -62,7 +64,7 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
                     imagesSize += photo.size;
                     images.push("https://" + req.headers.host + "/" + photo.path)
                 })
-                body.images_size = imagesSize * (1/8000000);
+                body.images_size = imagesSize * (1/(1024*1024));//MB
             }
         }
         body.images = images;
@@ -145,6 +147,151 @@ router.post('/create', authenticate, upload.array('image', 12), function(req, re
         }
     }
 });
+var createProductGroup = (res,body) => {
+    let newProductGroup = {
+        "name": body.name,
+        "category_id": body.category_id,
+        "description": body.description,
+        "features": body.features,
+        "createdAt": new Date(),
+        "parent": body.parent,
+        "images": body.images,
+        "active": true,
+        "rate": 0
+    }
+    if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
+    let newProductGroupData = new ProductGroup(newProductGroup);
+    newProductGroupData.save().then((newProductGroup) => {
+        let storeQuery = {parent: body.parent}
+        Store.findOneAndUpdate(storeQuery,{$inc : {'imagesStorage' : body.images_size}}, { new: true }, (e, response) => {
+            if(e){
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": e.message
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error while updating store data."
+                    });
+                }
+            }else{
+                if(body.productMap && body.productMap.length >= 1){
+                    let finalProductsArr = [];
+                    body.productMap.map((product)=>{
+                        let mapObj = {};
+                        mapObj[body.branch_id] = product.quantity;
+                        let name = body.name;
+                        Object.keys(product.features).map(function(key, index) {
+                                name += "-" + product.features[key]
+                        });
+                        let finalProduct = {
+                            "group_id": newProductGroup._id,
+                            "name": name,
+                            "price": product.price,
+                            "quantity": product.quantity,
+                            "features": product.features,
+                            "map": mapObj,
+                            "parent": body.parent,
+                            "active": true
+                        }
+                        finalProductsArr.push(finalProduct);
+                    })
+                    createManyProducts(res, finalProductsArr);
+                }else{
+                    let mapObj = {};
+                    mapObj[body.branch_id] = body.quantity;
+                    let finalProduct = {
+                        "group_id": newProductGroup._id,
+                        "name": body.name,
+                        "price": body.price,
+                        "quantity": body.quantity,
+                        "map": mapObj,
+                        "parent": body.parent,
+                        "active": true
+                    }
+                    createProduct(res, finalProduct);
+                }
+            }
+        })
+    }).catch((e) => {
+        console.log(e)
+        if(e.code){
+            if(e.code == 11000){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }
+        }else{
+            res.status(400).send({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
+var createProduct = (res, product) => {
+    let newProductData = new Product(product);
+    newProductData.save().then((newProduct) => {
+        return res.status(201).send({
+            "status": 1,
+            "data": {"productData": newProduct}
+        });
+    }).catch((e) => {
+        if(e.code){
+            if(e.code == 11000){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }
+        }else{
+            res.status(400).send({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
+var createManyProducts = (res, products) => {
+    Product.insertMany(products).then((newProducts) => {
+        return res.status(201).send({
+            "status": 1,
+            "data": {"productData": newProducts}
+        });
+    }).catch((e) => {
+        if(e.code){
+            if(e.code == 11000){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": e
+                });
+            }
+        }else{
+            res.status(400).send({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
 router.post('/singleAdd', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('116')){
         res.status(400).send({
@@ -227,134 +374,8 @@ router.post('/singleAdd', authenticate, function(req, res, next) {
         }
     }
 });
-var createProductGroup = (res,body) => {
-    let newProductGroup = {
-        "name": body.name,
-        "category_id": body.category_id,
-        "description": body.description,
-        "features": body.features,
-        "createdAt": new Date(),
-        "parent": body.parent,
-        "images": body.images,
-        "active": true,
-        "rate": 0
-    }
-    if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
-    let newProductGroupData = new ProductGroup(newProductGroup);
-    newProductGroupData.save().then((newProductGroup) => {
-        if(body.productMap && body.productMap.length >= 1){
-            let finalProductsArr = [];
-            body.productMap.map((product)=>{
-                let mapObj = {};
-                mapObj[body.branch_id] = product.quantity;
-                let name = body.name;
-                Object.keys(product.features).map(function(key, index) {
-                     name += "-" + product.features[key]
-                });
-                let finalProduct = {
-                    "group_id": newProductGroup._id,
-                    "name": name,
-                    "price": product.price,
-                    "quantity": product.quantity,
-                    "features": product.features,
-                    "map": mapObj,
-                    "parent": body.parent,
-                    "active": true
-                }
-                finalProductsArr.push(finalProduct);
-            })
-            createManyProducts(res, finalProductsArr);
-        }else{
-            let mapObj = {};
-            mapObj[body.branch_id] = body.quantity;
-            let finalProduct = {
-                "group_id": newProductGroup._id,
-                "name": body.name,
-                "price": body.price,
-                "quantity": body.quantity,
-                "map": mapObj,
-                "parent": body.parent,
-                "active": true
-            }
-            createProduct(res, finalProduct);
-        }
-    }).catch((e) => {
-        if(e.code){
-            if(e.code == 11000){
-                res.status(400).send({
-                    "status": 0,
-                    "message": e
-                });
-            }else{
-                res.status(400).send({
-                    "status": 0,
-                    "message": e
-                });
-            }
-        }else{
-            res.status(400).send({
-                "status": 0,
-                "message": e
-            });
-        }
-    });
-}
-var createProduct = (res, product) => {
-    let newProductData = new Product(product);
-    newProductData.save().then((newProduct) => {
-        return res.status(201).send({
-            "status": 1,
-            "data": {"productData": newProduct}
-        });
-    }).catch((e) => {
-        if(e.code){
-            if(e.code == 11000){
-                res.status(400).send({
-                    "status": 0,
-                    "message": e
-                });
-            }else{
-                res.status(400).send({
-                    "status": 0,
-                    "message": e
-                });
-            }
-        }else{
-            res.status(400).send({
-                "status": 0,
-                "message": e
-            });
-        }
-    });
-}
-var createManyProducts = (res, products) => {
-    Product.insertMany(products).then((newProducts) => {
-        return res.status(201).send({
-            "status": 1,
-            "data": {"productData": newProducts}
-        });
-    }).catch((e) => {
-        if(e.code){
-            if(e.code == 11000){
-                res.status(400).send({
-                    "status": 0,
-                    "message": e
-                });
-            }else{
-                res.status(400).send({
-                    "status": 0,
-                    "message": e
-                });
-            }
-        }else{
-            res.status(400).send({
-                "status": 0,
-                "message": e
-            });
-        }
-    });
-}
-/* edit feature. */
+
+/* edit products. */
 router.post('/edit', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('113')){
         res.status(400).send({
@@ -417,7 +438,7 @@ router.post('/edit', authenticate, function(req, res, next) {
     }
 });
 
-/* list feature. */
+/* list products. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('115')){
         res.status(400).send({

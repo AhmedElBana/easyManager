@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {User} = require('./../db/models/user');
+let {Store} = require('./../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
 
 let nodeMailer = require('nodemailer');
@@ -221,11 +222,11 @@ router.post('/forgotpassword', authenticate, function(req, res, next) {
 
 /* Add new admin user. */
 router.post('/admin/create', function(req, res, next) {
-  let body = _.pick(req.body, ['name','email','phoneNumber','password']);
-    if(!body.name || !body.email || !body.password){
+  let body = _.pick(req.body, ['name','email','phoneNumber','password','storeName','storePhoneNumber']);
+    if(!body.name || !body.email || !body.password || !body.storeName || !body.storePhoneNumber){
         res.status(400).send({
             "status": 0,
-            "message": "Missing data, (name, email, phoneNumber, password) fields are required."
+            "message": "Missing data, (name, email, phoneNumber, password, storeName, storePhoneNumber) fields are required."
         });
     }else{
         body.active = true;
@@ -234,11 +235,49 @@ router.post('/admin/create', function(req, res, next) {
         body.permissions = Object.keys(JSON.parse(process.env['permisitions']));
         let newUserData = new User(body);
         newUserData.save().then((newUser) => {
-            let token = newUser.generateAuthToken();
-            
-            return res.header('x-auth', token).status(201).send({
-                "status": 1,
-                "data": {"userData": newUser, "token": token}
+            let storeObj = {
+                "name": body.storeName,
+                "phoneNumber": body.storePhoneNumber,
+                "imagesStorage": 0,
+                "availableEmails": 0,
+                "usedEmails": 0,
+                "availableSMS": 0,
+                "usedSMS": 0,
+                "parent": newUser._id
+            }
+            let newStoreData = new Store(storeObj);
+            newStoreData.save().then((newStore) => {
+                let token = newUser.generateAuthToken();
+                return res.header('x-auth', token).status(201).send({
+                    "status": 1,
+                    "data": {"userData": newUser, "storeData": newStore, "token": token}
+                });
+            }).catch((e) => {
+                if(e.code){
+                    if(e.code == 11000){
+                        if(e.errmsg.includes("phoneNumber")){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "This store phone number is already exist."
+                            });
+                        }else{
+                            res.status(400).send({
+                                "status": 0,
+                                "message": e
+                            });
+                        }
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": e
+                        });
+                    }
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": e
+                    });
+                }
             });
         }).catch((e) => {
             if(e.code){
