@@ -487,7 +487,7 @@ var editProductGroup = (res, body) =>{
     if(body.category_id){updateBody.category_id = body.category_id}
     if(body.subCategory_id){updateBody.subCategory_id = body.subCategory_id}
     if(body.description){updateBody.description = body.description}
-    if(body.features){console.log(body.features);updateBody.features = body.features}
+    if(body.features){updateBody.features = body.features}
     if(body.active){updateBody.active = body.active}
 
     let query;
