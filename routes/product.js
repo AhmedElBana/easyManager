@@ -103,11 +103,11 @@ router.post('/edit', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to edit product."
         });
     }else{
-        let body = _.pick(req.body, ['productGroup_id','name','category_id','subCategory_id','description','features','active']);
-        if(!body.productGroup_id || !body.category_id){
+        let body = _.pick(req.body, ['product_id','name','price','features','active']);
+        if(!body.product_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (productGroup_id, category_id) field is required."
+                "message": "Missing data, (product_id) field is required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -115,45 +115,78 @@ router.post('/edit', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            Category.findOne({_id: body.category_id, parent: body.parent})
-            .then((category) => {
-                if(!category){
+            Product.findOne({parent: body.parent, _id: body.product_id})
+            .then((product) => {
+                if(!product){
                     res.status(400).send({
                         "status": 0,
-                        "message": "you don't have any category with this category_id."
+                        "message": "can't find any product with this _id."
                     });
                 }else{
-                    if(body.subCategory_id){
-                        SubCategory.findOne({_id: body.subCategory_id, category_id: body.category_id,parent: body.parent})
-                        .then((subCategory) => {
-                            if(!subCategory){
-                                res.status(400).send({
-                                    "status": 0,
-                                    "message": "you don't have any subCategory with this subCategory_id and category_id."
-                                });
-                            }else{
-                                editProductGroup(res,body);
-                            }
-                        },(e) => {
+                    let updateBody = {};
+                    if(body.name){updateBody.name = body.name}
+                    if(body.price){updateBody.price = body.price}
+                    if(body.active){updateBody.active = body.active}
+                    if(body.features){
+                        if(typeof(body.features) !== 'object'){
                             res.status(400).send({
                                 "status": 0,
-                                "message": "you don't have any subCategory with this subCategory_id and category_id."
+                                "message": "Wrong data (features) must be object."
                             });
-                        });
+                        }else{
+                            let newFeaturesObj = {...product.features};
+                            Object.keys(body.features).map((key)=>{
+                                if(Object.keys(product.features).includes(key)){
+                                    newFeaturesObj[key] = body.features[key];
+                                }
+                            });
+                            updateBody.features = {...newFeaturesObj}
+                            editProduct(res, body, updateBody);
+                        }
                     }else{
-                        editProductGroup(res,body);
-                    }
+                        editProduct(res, body, updateBody);
+                    }    
                 }
             },(e) => {
                 res.status(400).send({
                     "status": 0,
-                    "message": "you don't have any category with this category_id."
+                    "message": "can't find any product with this _id."
                 });
-            });
-            
+            }); 
         }
     }
 });
+var editProduct = (res, body, updateBody) => {
+    let query;
+    query = {_id: body.product_id, parent: body.parent};
+    Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            if(e.name && e.name == "CastError"){
+                res.status(400).send({
+                    "status": 0,
+                    "message": e.message
+                });
+            }else{
+                res.status(400).send({
+                    "status": 0,
+                    "message": "error while updating product data."
+                });
+            }
+        }else{
+            if(response == null){
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any product with this product_id."
+                });
+            }else{
+                return res.send({
+                    "status": 1,
+                    "data": {"ProductData": response}
+                });   
+            }
+        }
+    })       
+}
 /* list products. */
 router.get('/search', authenticate, function(req, res, next){
     if(!req.user.permissions.includes('115')){
