@@ -81,73 +81,125 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
                 body.parent = req.user.parent;
             }
             body.active = true;
-            body.features = JSON.parse(body.features);
+            if(body.features){body.features = JSON.parse(body.features);}
             if(body.productMap){body.productMap = JSON.parse(body.productMap);}
-            let FullBranchesArr = [];
-            Branch.find({parent: body.parent})
-            .then((branches) => {
-                branches.map((branch)=>{
-                    FullBranchesArr.push(branch._id.toString())
-                });
-                if(!FullBranchesArr.includes(body.branch_id)){
+            
+            Branch.findOne({parent: body.parent, _id: body.branch_id})
+            .then((branch) => {
+                if(!branch){
                     res.status(400).send({
                         "status": 0,
                         "message": "you don't have any branch with this branch_id."
                     });
                 }else{
-                    let FullcategoriesArr = [];
-                    Category.find({parent: body.parent})
-                    .then((categories) => {
-                        categories.map((category)=>{
-                            FullcategoriesArr.push(category._id.toString())
-                        });
-                        if(!FullcategoriesArr.includes(body.category_id)){
+                    Category.findOne({parent: body.parent, _id: body.category_id})
+                    .then((category) => {
+                        if(!category){
                             res.status(400).send({
                                 "status": 0,
                                 "message": "you don't have any category with this category_id."
                             });
                         }else{
                             if(body.subCategory_id){
-                                let FullSubCategoryArr = [];
-                                SubCategory.find({parent: body.parent})
-                                .then((subCategories) => {
-                                    subCategories.map((subCategory)=>{
-                                        FullSubCategoryArr.push(subCategory._id.toString())
-                                    });
-                                    if(!FullSubCategoryArr.includes(body.subCategory_id)){
+                                SubCategory.findOne({parent: body.parent, _id: body.subCategory_id, category_id: body.category_id})
+                                .then((subCategory) => {
+                                    if(!subCategory){
                                         res.status(400).send({
                                             "status": 0,
-                                            "message": "you don't have any subCategory with this subCategory_id."
+                                            "message": "wrong subCategory_id."
                                         });
                                     }else{
-                                        calcStorage(res,body);
+                                        check_features_productMap(body,function(err){
+                                            if(err !== null){
+                                                res.status(400).send(err);
+                                            }else{
+                                                calcStorage(res,body);
+                                            }
+                                        })
                                     }
                                 },(e) => {
                                     res.status(400).send({
                                         "status": 0,
-                                        "message": "Error happen while query subCategory data."
+                                        "message": "wrong subCategory_id."
                                     });
                                 });
                             }else{
-                                calcStorage(res,body);
+                                check_features_productMap(body,function(err){
+                                    if(err !== null){
+                                        res.status(400).send(err);
+                                    }else{
+                                        calcStorage(res,body);
+                                    }
+                                })
                             }
                         }
                     },(e) => {
                         res.status(400).send({
                             "status": 0,
-                            "message": "Error happen while query category data."
+                            "message": "you don't have any category with this category_id."
                         });
                     });
                 }
             },(e) => {
                 res.status(400).send({
                     "status": 0,
-                    "message": "Error happen while query branches data."
+                    "message": "you don't have any branch with this branch_id."
                 });
             });
         }
     }
 });
+var check_features_productMap = (body, callback) => {
+    let fountError = false;
+    if(body.features){
+        if(typeof(body.features) !== 'object'){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (features) must be object."
+            }
+            return callback(err);
+        }
+    }
+    if(body.productMap){
+        if(typeof(body.productMap[0]) !== 'object'){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (productMap) must be array of objects."
+            }
+            return callback(err);
+        }else{
+            body.productMap.map((object)=>{
+                if(!object.price || isNaN(object.price)){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "each object inside productMap must have (price) field with numeric value."
+                    }
+                    return callback(err);
+                }
+                if(!object.quantity || isNaN(object.quantity)){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "each object inside productMap must have (quantity) field with numeric value."
+                    }
+                    return callback(err);
+                }
+                if(typeof(object.features) !== 'object'){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "each object inside productMap must have (features) field with object value."
+                    }
+                    return callback(err);
+                }
+            })
+        }
+    }
+    if(!fountError){return callback(null);}
+}
 var calcStorage = (res,body) => {
     let storeQuery = {parent: body.parent}
     storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';

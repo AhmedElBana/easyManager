@@ -10,7 +10,7 @@ let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
 
-
+/* add old product */
 router.post('/add', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('116')){
         res.status(400).send({
@@ -94,7 +94,6 @@ router.post('/add', authenticate, function(req, res, next) {
         }
     }
 });
-
 /* edit products. */
 router.post('/edit', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('117')){
