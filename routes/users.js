@@ -222,7 +222,7 @@ router.post('/forgotpassword', authenticate, function(req, res, next) {
 
 /* Add new admin user. */
 router.post('/admin/create', function(req, res, next) {
-  let body = _.pick(req.body, ['name','email','phoneNumber','password','storeName','storePhoneNumber']);
+  let body = _.pick(req.body, ['name','language','email','phoneNumber','password','storeName','storePhoneNumber']);
     if(!body.name || !body.language || !body.email || !body.password || !body.storeName || !body.storePhoneNumber){
         res.status(400).send({
             "status": 0,
