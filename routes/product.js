@@ -155,7 +155,7 @@ router.post('/edit', authenticate, function(req, res, next) {
     }
 });
 /* list products. */
-router.get('/singleProduct', authenticate, function(req, res, next){
+router.get('/search', authenticate, function(req, res, next){
     if(!req.user.permissions.includes('115')){
         res.status(400).send({
             "status": 0,
