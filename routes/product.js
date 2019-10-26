@@ -187,7 +187,7 @@ router.get('/search', authenticate, function(req, res, next){
                         "message": "can't find any product with this _id."
                     });
                 }else{
-                    if(productGroup.map.includes(req.query.branch_id)){
+                    if(Object.keys(productGroup.map).includes(req.query.branch_id)){
                         return res.send({
                             "status": 1,
                             "data": productGroup
