@@ -12,6 +12,13 @@ let StoreSchema = new mongoose.Schema({
 		minlenght: 2,
 		trim: true
 	},
+	language: {
+		//en/ar
+		type: String,
+		trim: true,
+		unique: true,
+		required: true
+	},
 	phoneNumber: {
 		type: String,
 		trim: true,
@@ -58,7 +65,7 @@ let StoreSchema = new mongoose.Schema({
 StoreSchema.methods.toJSON = function(){
 	let Store = this;
 	let StoreObject = Store.toObject();
-	return _.pick(StoreObject, ['_id','name','phoneNumber','imagesStorageLimit','imagesStorage','availableEmails','usedEmails','availableSMS','usedSMS','parent']);
+	return _.pick(StoreObject, ['_id','name','language','phoneNumber','imagesStorageLimit','imagesStorage','availableEmails','usedEmails','availableSMS','usedSMS','parent']);
 }
 
 StoreSchema.plugin(mongoosePaginate);

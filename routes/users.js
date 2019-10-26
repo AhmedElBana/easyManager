@@ -223,10 +223,15 @@ router.post('/forgotpassword', authenticate, function(req, res, next) {
 /* Add new admin user. */
 router.post('/admin/create', function(req, res, next) {
   let body = _.pick(req.body, ['name','email','phoneNumber','password','storeName','storePhoneNumber']);
-    if(!body.name || !body.email || !body.password || !body.storeName || !body.storePhoneNumber){
+    if(!body.name || !body.language || !body.email || !body.password || !body.storeName || !body.storePhoneNumber){
         res.status(400).send({
             "status": 0,
-            "message": "Missing data, (name, email, phoneNumber, password, storeName, storePhoneNumber) fields are required."
+            "message": "Missing data, (name, language, email, phoneNumber, password, storeName, storePhoneNumber) fields are required."
+        });
+    }else if(body.language !== 'en' && body.language !== "ar"){
+        res.status(400).send({
+            "status": 0,
+            "message": "Wronge data, (language) value must be 'ar' or 'en'."
         });
     }else{
         body.active = true;
@@ -237,6 +242,7 @@ router.post('/admin/create', function(req, res, next) {
         newUserData.save().then((newUser) => {
             let storeObj = {
                 "name": body.storeName,
+                "language": body.language,
                 "phoneNumber": body.storePhoneNumber,
                 "imagesStorageLimit": 50,
                 "imagesStorage": 0,
