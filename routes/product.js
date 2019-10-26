@@ -175,10 +175,10 @@ router.get('/search', authenticate, function(req, res, next){
                 parent = req.user.parent;
             }
             let filters = {parent: parent, _id: req.query._id}
-            if(req.query.branch_id){
-                filters.$where = 'function() { return Object.keys(this.map).includes("' + req.query.branch_id + '");}';
-                // filters.$where = function(){return Object.keys(this.map).includes(req.query.branch_id)}
-            }
+            // if(req.query.branch_id){
+            //     filters.$where = 'function() { return Object.keys(this.map).includes("' + req.query.branch_id + '");}';
+            //     // filters.$where = function(){return Object.keys(this.map).includes(req.query.branch_id)}
+            // }
             Product.findOne(filters)
             .then((productGroup) => {
                 if(!productGroup){
@@ -187,10 +187,17 @@ router.get('/search', authenticate, function(req, res, next){
                         "message": "can't find any product with this _id."
                     });
                 }else{
-                    return res.send({
-                        "status": 1,
-                        "data": productGroup
-                    });
+                    if(productGroup.map.includes(req.query.branch_id)){
+                        return res.send({
+                            "status": 1,
+                            "data": productGroup
+                        });
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "this product ran out from this branch. try to search in the other branches."
+                        });
+                    }
                 }
             },(e) => {
                 console.log(e)
