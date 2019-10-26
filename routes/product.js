@@ -47,10 +47,10 @@ router.post('/add', authenticate, function(req, res, next) {
                                 "message": "you don't have any branch with this branch_id."
                             });
                         }else{
-                            if(isNaN(body.quantity)){
+                            if(isNaN(body.quantity) || parseInt(body.quantity) <= 0){
                                 res.status(400).send({
                                     "status": 0,
-                                    "message": "wrong quantity value, must be integer."
+                                    "message": "wrong quantity value, must be integer more than 0."
                                 });
                             }else{
                                 let oldMap = product.map;
