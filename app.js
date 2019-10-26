@@ -10,6 +10,7 @@ var categoryRouter = require('./routes/category')
 var subCategoryRouter = require('./routes/subCategory')
 var featureRouter = require('./routes/feature')
 var productGroupRouter = require('./routes/productGroup')
+var productRouter = require('./routes/product')
 
 var app = express();
 
@@ -39,5 +40,6 @@ app.use('/api/category', categoryRouter);
 app.use('/api/subCategory', subCategoryRouter);
 app.use('/api/feature', featureRouter);
 app.use('/api/productGroup', productGroupRouter);
+app.use('/api/product', productRouter);
 
 module.exports = app;
