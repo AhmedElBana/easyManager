@@ -31,7 +31,6 @@ router.post('/create', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            console.log(body)
             checkBranches(body,function(err){
                 if(err !== null){
                     res.status(400).send(err);
@@ -41,14 +40,22 @@ router.post('/create', authenticate, function(req, res, next) {
                         if(err !== null){
                             res.status(400).send(err);
                         }else{
+                            console.log('products ready to gooo');
                             checkProductsAvailability(body, function(err){
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
                                     console.log('products Availability ready to gooo');
+                                    removeProducts(body, function(err){
+                                        if(err !== null){
+                                            res.status(400).send(err);
+                                        }else{
+                                            console.log('products removed ready to gooo');
+                                            
+                                        }
+                                    })
                                 }
                             })
-                            console.log('products ready to gooo');
                         }
                     })
                 }
@@ -89,16 +96,36 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+
+function updateOneProduct(product_id, updatedMap) { 
+    return new Promise(resolve => {
+        let updateBody = {"map": updatedMap};
+        let query = {_id: product_id};
+        Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                console.log(e)
+            }else{
+                resolve(response);
+            }
+        })
+    });
+}
+async function removeProducts(body, callback) {
+    Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
+        updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
+    })
+    callback(null);
+}
 var checkProductsAvailability = (body, callback) => {
     let productsArr = [];
     let productsQuantityMap = {};
+    let finalProductsQuantityMap = {};
     body.products.map((product)=>{
         productsArr.push(product.product_id)
         productsQuantityMap[product.product_id] = product.quantity;
     })
     Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
         .then((products) => {
-            console.log(products);
             if(products.length !== productsArr.length){
                 let err = {
                     "status": 0,
@@ -115,6 +142,12 @@ var checkProductsAvailability = (body, callback) => {
                         return callback(err)
                     }
                 })
+                products.map((singleProduct) => {
+                    var newMapObj = {...singleProduct.map};
+                    newMapObj[body.source_id] -= productsQuantityMap[singleProduct._id.toString()]
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj
+                })
+                body.finalProductsQuantityMap = finalProductsQuantityMap;
                 return callback(null)
             }
         },(e) => {
