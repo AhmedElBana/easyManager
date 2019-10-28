@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
-let {User} = require('./../db/models/user');
+let {Product} = require('./../db/models/product');
 let {Branch} = require('./../db/models/branch');
 let {Transfer} = require('./../db/models/transfer');
 let {authenticate} = require('../middleware/authenticate');
@@ -37,8 +37,19 @@ router.post('/create', authenticate, function(req, res, next) {
                     res.status(400).send(err);
                 }else{
                     console.log('branches ready to gooo');
-                    checkProducts(body, function(){
-                        console.log('products ready to gooo');
+                    checkProductsFormat(body, function(err){
+                        if(err !== null){
+                            res.status(400).send(err);
+                        }else{
+                            checkProductsAvailability(body, function(err){
+                                if(err !== null){
+                                    res.status(400).send(err);
+                                }else{
+                                    console.log('products Availability ready to gooo');
+                                }
+                            })
+                            console.log('products ready to gooo');
+                        }
                     })
                 }
             });
@@ -78,8 +89,81 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
-var checkProducts = (body, callback) => {
-    return callback(null);
+var checkProductsAvailability = (body, callback) => {
+    let productsArr = [];
+    let productsQuantityMap = {};
+    body.products.map((product)=>{
+        productsArr.push(product.product_id)
+        productsQuantityMap[product.product_id] = product.quantity;
+    })
+    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+        .then((products) => {
+            console.log(products);
+            if(products.length !== productsArr.length){
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                products.map((singleProduct) => {
+                    if(!singleProduct.map[body.source_id] || singleProduct.map[body.source_id] < productsQuantityMap[singleProduct._id.toString()]){
+                        let err = {
+                            "status": 0,
+                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
+                        };
+                        return callback(err)
+                    }
+                })
+                return callback(null)
+            }
+        },(e) => {
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
+
+}
+var checkProductsFormat = (body, callback) => {
+    let fountError = false;
+    if(typeof(body.products[0]) !== 'object'){
+        fountError = true;
+        let err = {
+            "status": 0,
+            "message": "Wrong data (products) must be array of objects."
+        }
+        return callback(err);
+    }else{
+        body.products.map((product)=>{
+            if(!product.product_id){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (product_id) field."
+                }
+                return callback(err);
+            }
+            if(!product.quantity || isNaN(product.quantity)){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (quantity) field with numeric value."
+                }
+                return callback(err);
+            }
+        })
+    }
+    if(!fountError){return callback(null);}
 }
 var checkBranches = (body, callback) => {
     if(body.source_id === body.target_id){
