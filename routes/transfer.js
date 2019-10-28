@@ -31,68 +31,51 @@ router.post('/create', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            checkBranches(body,function(err){
-                if(err !== null){
-                    res.status(400).send(err);
-                }else{
-                    console.log('branches ready to gooo');
-                    checkProductsFormat(body, function(err){
-                        if(err !== null){
-                            res.status(400).send(err);
-                        }else{
-                            console.log('products ready to gooo');
-                            checkProductsAvailability(body, function(err){
-                                if(err !== null){
-                                    res.status(400).send(err);
-                                }else{
-                                    console.log('products Availability ready to gooo');
-                                    removeProducts(body, function(err){
-                                        if(err !== null){
-                                            res.status(400).send(err);
-                                        }else{
-                                            console.log('products removed ready to gooo');
-                                            
-                                        }
-                                    })
-                                }
-                            })
-                        }
-                    })
-                }
-            });
-            // let newBranchData = new Branch(body);
-            // newBranchData.save().then((newBranch) => {                
-            //     return res.status(201).send({
-            //         "status": 1,
-            //         "data": {"branchData": newBranch}
-            //     });
-            // }).catch((e) => {
-            //     if(e.code){
-            //         if(e.code == 11000){
-            //             if(e.errmsg.includes("phoneNumber")){
-            //                 res.status(400).send({
-            //                     "status": 0,
-            //                     "message": "This phone number is already exist."
-            //                 });
-            //             }else{
-            //                 res.status(400).send({
-            //                     "status": 0,
-            //                     "message": e
-            //                 });
-            //             }
-            //         }else{
-            //             res.status(400).send({
-            //                 "status": 0,
-            //                 "message": e
-            //             });
-            //         }
-            //     }else{
-            //         res.status(400).send({
-            //             "status": 0,
-            //             "message": e
-            //         });
-            //     }
-            // });
+            if(new Date(body.expectedDeliveryTime)  == 'Invalid Date'){
+                res.status(400).send({
+                    "status": 0,
+                    "message": "Wrong data: (expectedDeliveryTime) must be valid date."
+                });
+            }else{
+                body.expectedDeliveryTime = new Date(body.expectedDeliveryTime);
+                checkBranches(body,function(err){
+                    if(err !== null){
+                        res.status(400).send(err);
+                    }else{
+                        checkProductsFormat(body, function(err){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                checkProductsAvailability(body, function(err){
+                                    if(err !== null){
+                                        res.status(400).send(err);
+                                    }else{
+                                        removeProducts(body, function(err){
+                                            if(err !== null){
+                                                res.status(400).send(err);
+                                            }else{
+                                                //create the transfer
+                                                let newTransferData = new Transfer(body);
+                                                newTransferData.save().then((newTransfer) => {                
+                                                    return res.status(201).send({
+                                                        "status": 1,
+                                                        "data": {"transferData": newTransfer}
+                                                    });
+                                                }).catch((e) => {
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": e
+                                                    });
+                                                });
+                                            }
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                    }
+                });
+            }
         }
     }
 });
@@ -117,6 +100,7 @@ async function removeProducts(body, callback) {
     callback(null);
 }
 var checkProductsAvailability = (body, callback) => {
+    let fountError = false;
     let productsArr = [];
     let productsQuantityMap = {};
     let finalProductsQuantityMap = {};
@@ -127,6 +111,7 @@ var checkProductsAvailability = (body, callback) => {
     Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
         .then((products) => {
             if(products.length !== productsArr.length){
+                fountError = true;
                 let err = {
                     "status": 0,
                     "message": "Wrong data: can't find some products, please check (product_id) for each product."
@@ -135,6 +120,7 @@ var checkProductsAvailability = (body, callback) => {
             }else{
                 products.map((singleProduct) => {
                     if(!singleProduct.map[body.source_id] || singleProduct.map[body.source_id] < productsQuantityMap[singleProduct._id.toString()]){
+                        fountError = true;
                         let err = {
                             "status": 0,
                             "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
@@ -148,9 +134,10 @@ var checkProductsAvailability = (body, callback) => {
                     finalProductsQuantityMap[singleProduct._id] = newMapObj
                 })
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
-                return callback(null)
+                if(!fountError){return callback(null);}
             }
         },(e) => {
+            fountError = true;
             let err;
             if(e.name && e.name == 'CastError'){
                 err = {
