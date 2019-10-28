@@ -17,5 +17,9 @@
     "115":"can view product",
     "116":"can create product",
     "117":"can edit product",
-    "118":"can deactivate product"
+    "118":"can deactivate product",
+    "119":"can view transfer",
+    "120":"can create transfer",
+    "121":"can edit transfer",
+    "122":"can cancel transfer"
 }
