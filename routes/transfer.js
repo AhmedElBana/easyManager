@@ -189,7 +189,7 @@ router.get('/cancel', authenticate, function(req, res, next) {
                     if(transfer.status != "inProgress"){
                         res.status(400).send({
                             "status": 0,
-                            "message": "can't accept this transfer ( " + transfer.status +" transfer)."
+                            "message": "can't cancel this transfer ( " + transfer.status +" transfer)."
                         });
                     }else{
                         addProducts(transfer.products, parent, transfer.source_id, function(err){
