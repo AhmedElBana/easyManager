@@ -451,10 +451,10 @@ async function addProducts(productsArr, parent_id, branch_id, callback) {
 }
 /* list transfer. */
 router.get('/list', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('104')){
+    if(!req.user.permissions.includes('119')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to view branches."
+            "message": "This user does not have perrmission to view transfers."
         });
     }else{
         let page;
@@ -475,14 +475,14 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        Branch.paginate(filters, options, function(err, result) {
+        Transfer.paginate(filters, options, function(err, result) {
             let next;
             if(result.hasNextPage){
-                next = "https://" + req.headers.host + "/api/branch/list?page=" + result.nextPage + "&page_size=" + page_size;
+                next = "https://" + req.headers.host + "/api/transfer/list?page=" + result.nextPage + "&page_size=" + page_size;
             }else{next = null;}
             let prev;
             if(result.hasPrevPage){
-                prev = "https://" + req.headers.host + "/api/branch/list?page=" + result.prevPage + "&page_size=" + page_size;
+                prev = "https://" + req.headers.host + "/api/transfer/list?page=" + result.prevPage + "&page_size=" + page_size;
             }else{prev = null;}
             let data = {
                 total: result.totalDocs,
