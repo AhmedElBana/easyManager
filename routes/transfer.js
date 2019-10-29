@@ -6,7 +6,7 @@ let {Branch} = require('./../db/models/branch');
 let {Transfer} = require('./../db/models/transfer');
 let {authenticate} = require('../middleware/authenticate');
 
-/* Create new branch. */
+/* Create new transfer. */
 router.post('/create', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('120')){
         res.status(400).send({
@@ -79,7 +79,7 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
-
+// updateOneProduct used with removeProducts/addProducts
 function updateOneProduct(product_id, updatedMap) { 
     return new Promise(resolve => {
         let updateBody = {"map": updatedMap};
@@ -238,72 +238,139 @@ var checkBranches = (body, callback) => {
         });
     }
 }
-/* edit branch. */
-router.post('/edit', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('106')){
+/* accept transfer. */
+router.get('/accept', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('121')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to edit branch."
+            "message": "This user does not have perrmission to accept transfer."
         });
     }else{
-        let body = _.pick(req.body, ['branch_id','name','phoneNumber','address','type','active']);
-        if(!body.branch_id){
+        if(!req.query.transfer_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (branch_id) field is required."
+                "message": "Missing data, (transfer_id) field is required."
             });
         }else{
-            let user = req.user;
-            let updateBody = {};
-            if(req.body.name){updateBody.name = req.body.name}
-            if(req.body.phoneNumber){updateBody.phoneNumber = req.body.phoneNumber}
-            if(req.body.address){updateBody.address = req.body.address}
-            if(req.body.type){updateBody.type = req.body.type}
-            if(req.body.active){updateBody.active = req.body.active}
-
-            let query;
+            let parent;
             if(req.user.type == 'admin'){
-                query = {_id: body.branch_id, parent: req.user._id};
+                parent = req.user._id;
             }else if(req.user.type == 'staff'){
-                query = {_id: body.branch_id, parent: req.user.parent};
+                parent = req.user.parent;
             }
-            Branch.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-                if(e){
-                    if(e.errmsg && e.errmsg.includes("phoneNumber")){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "This phone number is already exist."
-                        });
-                    }else if(e.name && e.name == "CastError"){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": e.message
-                        });
-                    }else{
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "error while updating user data."
-                        });
-                    }
+            Transfer.findOne({'_id': req.query.transfer_id, 'parent': parent})
+            .then((transfer) => {
+                if(!transfer){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any transfer with this transfer_id."
+                    });
                 }else{
-                    if(response == null){
+                    if(transfer.status != "inProgress"){
                         res.status(400).send({
                             "status": 0,
-                            "message": "can't find any branch with this branch_id."
+                            "message": "can't accept this transfer ( " + transfer.status +" transfer)."
                         });
                     }else{
-                        return res.send({
-                            "status": 1,
-                            "data": {"branchData": response}
-                        });   
+                        addProducts(transfer.products, parent, transfer.target_id, function(err){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                let newActionsMap = [...transfer.actionsMap,{"user_id": req.user._id, "date": new Date(), "action": "accept"}];
+                                let updateBody = {
+                                    "status": "completed",
+                                    "lastUpdate": new Date(),
+                                    "actionsMap": newActionsMap
+                                };
+                                let query = {_id: transfer._id};
+                                Transfer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                                    if(response == null){
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": "error happen while update transfer data."
+                                        });
+                                    }else{
+                                        return res.send({
+                                            "status": 1,
+                                            "data": {"transferData": response}
+                                        });   
+                                    }
+                                })
+                            }
+                        })
                     }
                 }
-            })
+            },(e) => {
+                let err;
+                if(e.name && e.name == 'CastError'){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Wrong value: (" + e.value + ") is not valid transfer id."
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error hanppen while query transfer data."
+                    });
+                }
+            });
         }
     }
 });
-
-/* list branches. */
+async function addProducts(productsArr, parent_id, branch_id, callback) {
+    let fountError = false;
+    let productsIds = [];
+    let productsMap = {};
+    productsArr.map((product)=>{
+        productsIds.push(product.product_id);
+        productsMap[product.product_id] = product.quantity
+    })
+    console.log(productsMap);
+    Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+    .then((products) => {
+        if(products.length !== productsIds.length){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data: can't find some products, please check (product_id) for each product."
+            };
+            return callback(err)
+        }else{
+            let idWithFullMap = {};
+            products.map((singleProduct) => {
+                idWithFullMap[singleProduct._id] = singleProduct.map;
+            })
+            let newIdWithFullMap = {...idWithFullMap}
+            Object.keys(productsMap).map((product_id) => {
+                if(newIdWithFullMap[product_id][branch_id]){
+                    newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
+                }else{
+                    newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
+                }
+            })
+            Object.keys(newIdWithFullMap).map((product_id)=>{
+                updateOneProduct(product_id,newIdWithFullMap[product_id]);
+            })
+            if(!fountError){return callback(null);}
+        }
+    },(e) => {
+        fountError = true;
+        let err;
+        if(e.name && e.name == 'CastError'){
+            err = {
+                "status": 0,
+                "message": "Wrong value: (" + e.value + ") is not valid product id."
+            };
+        }else{
+            err = {
+                "status": 0,
+                "message": "error hanppen while query products data."
+            };
+        }
+        return callback(err)
+    });
+}
+/* list transfer. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('104')){
         res.status(400).send({
