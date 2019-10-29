@@ -317,6 +317,85 @@ router.get('/accept', authenticate, function(req, res, next) {
         }
     }
 });
+/* cancel transfer. */
+router.get('/cancel', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('122')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to cancel transfer."
+        });
+    }else{
+        if(!req.query.transfer_id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (transfer_id) field is required."
+            });
+        }else{
+            let parent;
+            if(req.user.type == 'admin'){
+                parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                parent = req.user.parent;
+            }
+            Transfer.findOne({'_id': req.query.transfer_id, 'parent': parent})
+            .then((transfer) => {
+                if(!transfer){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any transfer with this transfer_id."
+                    });
+                }else{
+                    if(transfer.status != "inProgress"){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't accept this transfer ( " + transfer.status +" transfer)."
+                        });
+                    }else{
+                        addProducts(transfer.products, parent, transfer.source_id, function(err){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                let newActionsMap = [...transfer.actionsMap,{"user_id": req.user._id, "date": new Date(), "action": "cancel"}];
+                                let updateBody = {
+                                    "status": "canceled",
+                                    "lastUpdate": new Date(),
+                                    "actionsMap": newActionsMap
+                                };
+                                let query = {_id: transfer._id};
+                                Transfer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                                    if(response == null){
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": "error happen while update transfer data."
+                                        });
+                                    }else{
+                                        return res.send({
+                                            "status": 1,
+                                            "data": {"transferData": response}
+                                        });   
+                                    }
+                                })
+                            }
+                        })
+                    }
+                }
+            },(e) => {
+                let err;
+                if(e.name && e.name == 'CastError'){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Wrong value: (" + e.value + ") is not valid transfer id."
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error hanppen while query transfer data."
+                    });
+                }
+            });
+        }
+    }
+});
 async function addProducts(productsArr, parent_id, branch_id, callback) {
     let fountError = false;
     let productsIds = [];
