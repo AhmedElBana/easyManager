@@ -79,165 +79,6 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
-// updateOneProduct used with removeProducts/addProducts
-function updateOneProduct(product_id, updatedMap) { 
-    return new Promise(resolve => {
-        let updateBody = {"map": updatedMap};
-        let query = {_id: product_id};
-        Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-            if(e){
-                console.log(e)
-            }else{
-                resolve(response);
-            }
-        })
-    });
-}
-async function removeProducts(body, callback) {
-    Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
-        updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
-    })
-    callback(null);
-}
-var checkProductsAvailability = (body, callback) => {
-    let fountError = false;
-    let productsArr = [];
-    let productsQuantityMap = {};
-    let finalProductsQuantityMap = {};
-    body.products.map((product)=>{
-        productsArr.push(product.product_id)
-        productsQuantityMap[product.product_id] = product.quantity;
-    })
-    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
-        .then((products) => {
-            if(products.length !== productsArr.length){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
-                };
-                return callback(err)
-            }else{
-                products.map((singleProduct) => {
-                    if(!singleProduct.map[body.source_id] || singleProduct.map[body.source_id] < productsQuantityMap[singleProduct._id.toString()]){
-                        fountError = true;
-                        let err = {
-                            "status": 0,
-                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
-                        };
-                        return callback(err)
-                    }
-                })
-                products.map((singleProduct) => {
-                    var newMapObj = {...singleProduct.map};
-                    newMapObj[body.source_id] -= productsQuantityMap[singleProduct._id.toString()]
-                    finalProductsQuantityMap[singleProduct._id] = newMapObj
-                })
-                body.finalProductsQuantityMap = finalProductsQuantityMap;
-                if(!fountError){return callback(null);}
-            }
-        },(e) => {
-            fountError = true;
-            let err;
-            if(e.name && e.name == 'CastError'){
-                err = {
-                    "status": 0,
-                    "message": "Wrong value: (" + e.value + ") is not valid product id."
-                };
-            }else{
-                err = {
-                    "status": 0,
-                    "message": "error hanppen while query products data."
-                };
-            }
-            return callback(err)
-        });
-
-}
-var checkProductsFormat = (body, callback) => {
-    let fountError = false;
-    if(typeof(body.products[0]) !== 'object'){
-        fountError = true;
-        let err = {
-            "status": 0,
-            "message": "Wrong data (products) must be array of objects."
-        }
-        return callback(err);
-    }else{
-        body.products.map((product)=>{
-            if(!product.product_id){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "each object inside products must have (product_id) field."
-                }
-                return callback(err);
-            }
-            if(!product.quantity || isNaN(product.quantity)){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "each object inside products must have (quantity) field with numeric value."
-                }
-                return callback(err);
-            }
-        })
-    }
-    if(!fountError){return callback(null);}
-}
-var checkBranches = (body, callback) => {
-    if(body.source_id === body.target_id){
-        let err = {
-            "status": 0,
-            "message": "can't transfer products to the same branch."
-        };
-        return callback(err)
-    }else{
-        Branch.find({'_id': { $in: [body.source_id, body.target_id]}, 'parent': body.parent})
-        .then((branches) => {
-            if(branches.length !== 2){
-                let err;
-                let foundedIds = [];
-                branches.map((branch)=>{
-                    foundedIds.push(branch._id.toString())
-                })
-                if(!foundedIds.includes(body.source_id)){
-                    err = {
-                        "status": 0,
-                        "message": "can't find any branch with this (source_id)."
-                    };
-                }else if(!foundedIds.includes(body.target_id)){
-                    err = {
-                        "status": 0,
-                        "message": "can't find any branch with this (target_id)."
-                    };
-                }else{
-                    err = {
-                        "status": 0,
-                        "message": "error hanppen while query branches data."
-                    };
-                }
-                return callback(err)
-            }else{
-                return callback(null)
-            }
-        },(e) => {
-            let err;
-            if(e.name && e.name == 'CastError'){
-                err = {
-                    "status": 0,
-                    "message": "Wrong value: (" + e.value + ") is not valid baranch id."
-                };
-            }else{
-                err = {
-                    "status": 0,
-                    "message": "error hanppen while query branches data."
-                };
-            }
-            return callback(err)
-        });
-    }
-}
 /* accept transfer. */
 router.get('/accept', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('121')){
@@ -396,59 +237,6 @@ router.get('/cancel', authenticate, function(req, res, next) {
         }
     }
 });
-async function addProducts(productsArr, parent_id, branch_id, callback) {
-    let fountError = false;
-    let productsIds = [];
-    let productsMap = {};
-    productsArr.map((product)=>{
-        productsIds.push(product.product_id);
-        productsMap[product.product_id] = product.quantity
-    })
-    console.log(productsMap);
-    Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
-    .then((products) => {
-        if(products.length !== productsIds.length){
-            fountError = true;
-            let err = {
-                "status": 0,
-                "message": "Wrong data: can't find some products, please check (product_id) for each product."
-            };
-            return callback(err)
-        }else{
-            let idWithFullMap = {};
-            products.map((singleProduct) => {
-                idWithFullMap[singleProduct._id] = singleProduct.map;
-            })
-            let newIdWithFullMap = {...idWithFullMap}
-            Object.keys(productsMap).map((product_id) => {
-                if(newIdWithFullMap[product_id][branch_id]){
-                    newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
-                }else{
-                    newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
-                }
-            })
-            Object.keys(newIdWithFullMap).map((product_id)=>{
-                updateOneProduct(product_id,newIdWithFullMap[product_id]);
-            })
-            if(!fountError){return callback(null);}
-        }
-    },(e) => {
-        fountError = true;
-        let err;
-        if(e.name && e.name == 'CastError'){
-            err = {
-                "status": 0,
-                "message": "Wrong value: (" + e.value + ") is not valid product id."
-            };
-        }else{
-            err = {
-                "status": 0,
-                "message": "error hanppen while query products data."
-            };
-        }
-        return callback(err)
-    });
-}
 /* list transfer. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('119')){
@@ -497,5 +285,215 @@ router.get('/list', authenticate, function(req, res, next) {
         });
     }
 });
+async function addProducts(productsArr, parent_id, branch_id, callback) {
+    let fountError = false;
+    let productsIds = [];
+    let productsMap = {};
+    productsArr.map((product)=>{
+        productsIds.push(product.product_id);
+        productsMap[product.product_id] = product.quantity
+    })
+    Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+    .then((products) => {
+        if(products.length !== productsIds.length){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data: can't find some products, please check (product_id) for each product."
+            };
+            return callback(err)
+        }else{
+            let idWithFullMap = {};
+            products.map((singleProduct) => {
+                idWithFullMap[singleProduct._id] = singleProduct.map;
+            })
+            let newIdWithFullMap = {...idWithFullMap}
+            Object.keys(productsMap).map((product_id) => {
+                if(newIdWithFullMap[product_id][branch_id]){
+                    newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
+                }else{
+                    newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
+                }
+            })
+            Object.keys(newIdWithFullMap).map((product_id)=>{
+                updateOneProduct(product_id,newIdWithFullMap[product_id]);
+            })
+            if(!fountError){return callback(null);}
+        }
+    },(e) => {
+        fountError = true;
+        let err;
+        if(e.name && e.name == 'CastError'){
+            err = {
+                "status": 0,
+                "message": "Wrong value: (" + e.value + ") is not valid product id."
+            };
+        }else{
+            err = {
+                "status": 0,
+                "message": "error hanppen while query products data."
+            };
+        }
+        return callback(err)
+    });
+}
+async function removeProducts(body, callback) {
+    Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
+        updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
+    })
+    callback(null);
+}
+var checkProductsAvailability = (body, callback) => {
+    let fountError = false;
+    let productsArr = [];
+    let productsQuantityMap = {};
+    let finalProductsQuantityMap = {};
+    body.products.map((product)=>{
+        productsArr.push(product.product_id)
+        productsQuantityMap[product.product_id] = product.quantity;
+    })
+    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+        .then((products) => {
+            if(products.length !== productsArr.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                products.map((singleProduct) => {
+                    if(!singleProduct.map[body.source_id] || singleProduct.map[body.source_id] < productsQuantityMap[singleProduct._id.toString()]){
+                        fountError = true;
+                        let err = {
+                            "status": 0,
+                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
+                        };
+                        return callback(err)
+                    }
+                })
+                products.map((singleProduct) => {
+                    var newMapObj = {...singleProduct.map};
+                    newMapObj[body.source_id] -= productsQuantityMap[singleProduct._id.toString()]
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj
+                })
+                body.finalProductsQuantityMap = finalProductsQuantityMap;
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
 
+}
+var checkProductsFormat = (body, callback) => {
+    let fountError = false;
+    if(typeof(body.products[0]) !== 'object'){
+        fountError = true;
+        let err = {
+            "status": 0,
+            "message": "Wrong data (products) must be array of objects."
+        }
+        return callback(err);
+    }else{
+        body.products.map((product)=>{
+            if(!product.product_id){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (product_id) field."
+                }
+                return callback(err);
+            }
+            if(!product.quantity || isNaN(product.quantity)){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (quantity) field with numeric value."
+                }
+                return callback(err);
+            }
+        })
+    }
+    if(!fountError){return callback(null);}
+}
+var checkBranches = (body, callback) => {
+    if(body.source_id === body.target_id){
+        let err = {
+            "status": 0,
+            "message": "can't transfer products to the same branch."
+        };
+        return callback(err)
+    }else{
+        Branch.find({'_id': { $in: [body.source_id, body.target_id]}, 'parent': body.parent})
+        .then((branches) => {
+            if(branches.length !== 2){
+                let err;
+                let foundedIds = [];
+                branches.map((branch)=>{
+                    foundedIds.push(branch._id.toString())
+                })
+                if(!foundedIds.includes(body.source_id)){
+                    err = {
+                        "status": 0,
+                        "message": "can't find any branch with this (source_id)."
+                    };
+                }else if(!foundedIds.includes(body.target_id)){
+                    err = {
+                        "status": 0,
+                        "message": "can't find any branch with this (target_id)."
+                    };
+                }else{
+                    err = {
+                        "status": 0,
+                        "message": "error hanppen while query branches data."
+                    };
+                }
+                return callback(err)
+            }else{
+                return callback(null)
+            }
+        },(e) => {
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid baranch id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query branches data."
+                };
+            }
+            return callback(err)
+        });
+    }
+}
+// updateOneProduct used with removeProducts/addProducts
+function updateOneProduct(product_id, updatedMap) { 
+    return new Promise(resolve => {
+        let updateBody = {"map": updatedMap};
+        let query = {_id: product_id};
+        Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                console.log(e)
+            }else{
+                resolve(response);
+            }
+        })
+    });
+}
 module.exports = router;
