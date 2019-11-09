@@ -2,22 +2,23 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {Order} = require('../db/models/order');
-let {Feature} = require('../db/models/feature');
+let {Branch} = require('../db/models/branch');
+let {Customer} = require('../db/models/customer');
 let {authenticate} = require('../middleware/authenticate');
 
 /* Create new feature. */
 router.post('/create', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('112')){
+    if(!req.user.permissions.includes('124')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to create new feature."
+            "message": "This user does not have perrmission to create new order."
         });
     }else{
-        let body = _.pick(req.body, ['name','options']);
-        if(!body.name){
+        let body = _.pick(req.body, ['customerName','customerPhone','products','promo','promo_id','branch_id']);
+        if(!body.customerName || !body.customerPhone || !body.products || !body.promo || !body.branch_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, options) fields are required."
+                "message": "Missing data, (customerName, customerPhone, products, promo, branch_id) fields are required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -25,45 +26,89 @@ router.post('/create', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            body.active = true;
-            body.options = body.options.split(",")
-            let newFeatureData = new Feature(body);
-            newFeatureData.save().then((newFeature) => {                
-                return res.status(201).send({
-                    "status": 1,
-                    "data": {"featureData": newFeature}
-                });
-            }).catch((e) => {
-                if(e.code){
-                    if(e.code == 11000){
-                        if(e.errmsg.includes("phoneNumber")){
-                            res.status(400).send({
-                                "status": 0,
-                                "message": "This phone number is already exist."
-                            });
-                        }else{
-                            res.status(400).send({
-                                "status": 0,
-                                "message": e
-                            });
-                        }
-                    }else{
-                        res.status(400).send({
-                            "status": 0,
-                            "message": e
-                        });
-                    }
+            checkBranch(req, body, function(err){
+                if(err !== null){
+                    res.status(400).send(err);
                 }else{
-                    res.status(400).send({
-                        "status": 0,
-                        "message": e
+                    console.log("branch_id ready to goooo");
+                    checkCustomer(body, function(err, customer){
+                        if(err !== null){
+                            res.status(400).send(err);
+                        }else{
+                            console.log("customer ready to goooo");
+                            //console.log(customer)
+                            //productsCheck(body)
+                        }
                     });
                 }
-            });
+            })
         }
     }
 });
-
+var checkBranch = (req, body, callback) => {
+    Branch.findOne({_id: body.branch_id, parent: body.parent})
+    .then((branch) => {
+        if(!branch){
+            callback({
+                "status": 0,
+                "message": "wrong branch_id."
+            })
+        }else{
+            if(!req.user.branches.includes(body.branch_id) && req.user.type != "admin"){
+                callback({
+                    "status": 0,
+                    "message": "This user don't have access to this branch."
+                })
+            }else{
+                callback(null)
+            }
+        }
+    },(e) => {
+        if(e.name && e.name == 'CastError'){
+            callback({
+                "status": 0,
+                "message": "wrong branch_id."
+            })
+        }else{
+            callback({
+                "status": 0,
+                "message": "error happen while query branch data."
+            })
+        }
+    });
+}
+var checkCustomer = (body, callback) => {
+    Customer.findOne({phoneNumber: body.customerPhone, parent: body.parent})
+    .then((customer) => {
+        if(!customer){
+            console.log("new customer")
+            let customerObj = {
+                "name": body.customerName,
+                "phoneNumber": body.customerPhone,
+                "register_completed": false,
+                "is_login": false,
+                "parent": body.parent
+            }
+            //create new customer
+            let newCustomerData = new Customer(customerObj);
+            newCustomerData.save().then((newCustomer) => {  
+                callback(null,newCustomer)
+            }).catch((e) => {
+                callback({
+                    "status": 0,
+                    "message": e
+                }, null)
+            });
+        }else{
+            callback(null, customer)
+        }
+    },(e) => {
+        callback({
+            "status": 0,
+            "message": "error happen while query customer data."
+        }, null)
+    });
+}
 /* edit feature. */
 router.post('/edit', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('113')){

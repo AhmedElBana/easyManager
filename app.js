@@ -12,6 +12,7 @@ var featureRouter = require('./routes/feature')
 var productGroupRouter = require('./routes/productGroup')
 var productRouter = require('./routes/product')
 var transferRouter = require('./routes/transfer')
+var orderRouter = require('./routes/order')
 
 var app = express();
 
@@ -43,5 +44,6 @@ app.use('/api/feature', featureRouter);
 app.use('/api/productGroup', productGroupRouter);
 app.use('/api/product', productRouter);
 app.use('/api/transfer', transferRouter);
+app.use('/api/order', orderRouter);
 
 module.exports = app;
