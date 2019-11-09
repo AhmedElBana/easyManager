@@ -37,7 +37,13 @@ router.post('/create', authenticate, function(req, res, next) {
                         }else{
                             console.log("customer ready to goooo");
                             //console.log(customer)
-                            //productsCheck(body)
+                            productsFormatCheck(body, function(err){
+                                if(err !== null){
+                                    res.status(400).send(err);
+                                }else{
+                                    console.log("products format ready to goooo");
+                                }
+                            })
                         }
                     });
                 }
@@ -45,6 +51,37 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+var productsFormatCheck = (body, callback) => {
+    let fountError = false;
+    if(typeof(body.products[0]) !== 'object'){
+        fountError = true;
+        let err = {
+            "status": 0,
+            "message": "Wrong data (products) must be array of objects."
+        }
+        return callback(err);
+    }else{
+        body.products.map((product)=>{
+            if(!product.product_id){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (product_id) field."
+                }
+                return callback(err);
+            }
+            if(!product.quantity || isNaN(product.quantity)){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (quantity) field with numeric value."
+                }
+                return callback(err);
+            }
+        })
+    }
+    if(!fountError){return callback(null);}
+}
 var checkBranch = (req, body, callback) => {
     Branch.findOne({_id: body.branch_id, parent: body.parent})
     .then((branch) => {
