@@ -21,5 +21,9 @@
     "119":"can view transfer",
     "120":"can create transfer",
     "121":"can accept transfer",
-    "122":"can cancel transfer"
+    "122":"can cancel transfer",
+    "123":"can view order",
+    "124":"can create order",
+    "125":"can cancel order",
+    "126":"can return order"
 }
