@@ -4,6 +4,7 @@ const _ = require('lodash');
 let {Order} = require('../db/models/order');
 let {Branch} = require('../db/models/branch');
 let {Customer} = require('../db/models/customer');
+let {Product} = require('../db/models/product');
 let {authenticate} = require('../middleware/authenticate');
 
 /* Create new feature. */
@@ -42,6 +43,13 @@ router.post('/create', authenticate, function(req, res, next) {
                                     res.status(400).send(err);
                                 }else{
                                     console.log("products format ready to goooo");
+                                    checkProductsAvailability(body, function(err){
+                                        if(err !== null){
+                                            res.status(400).send(err);
+                                        }else{
+                                            console.log("products avilability ready to goooo");
+                                        }
+                                    })
                                 }
                             })
                         }
@@ -51,6 +59,61 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+var checkProductsAvailability = (body, callback) => {
+    let fountError = false;
+    let productsArr = [];
+    let productsQuantityMap = {};
+    let finalProductsQuantityMap = {};
+    body.products.map((product)=>{
+        productsArr.push(product.product_id)
+        productsQuantityMap[product.product_id] = product.quantity;
+    })
+    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+        .then((products) => {
+            if(products.length !== productsArr.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                products.map((singleProduct) => {
+                    if(!singleProduct.map[body.branch_id] || singleProduct.map[body.branch_id] < productsQuantityMap[singleProduct._id.toString()]){
+                        fountError = true;
+                        let err = {
+                            "status": 0,
+                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
+                        };
+                        return callback(err)
+                    }
+                })
+                products.map((singleProduct) => {
+                    var newMapObj = {...singleProduct.map};
+                    newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj
+                })
+                body.finalProductsQuantityMap = finalProductsQuantityMap;
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
+
+}
 var productsFormatCheck = (body, callback) => {
     let fountError = false;
     if(typeof(body.products[0]) !== 'object'){
