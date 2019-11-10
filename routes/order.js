@@ -64,6 +64,7 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                 "createdDate": new Date(),
                                                                 "branch_id": body.branch_id,
                                                                 "creator_id": req.user._id,
+                                                                "canceled": false,
                                                                 "parent": body.parent
                                                             }
                                                             let newOrderData = new Order(orderObj);
@@ -212,6 +213,58 @@ async function removeProducts(body, callback) {
     })
     callback(null);
 }
+async function addProducts(productsArr, parent_id, branch_id, callback) {
+    let fountError = false;
+    let productsIds = [];
+    let productsMap = {};
+    productsArr.map((product)=>{
+        productsIds.push(product.product_id);
+        productsMap[product.product_id] = product.quantity
+    })
+    Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+    .then((products) => {
+        if(products.length !== productsIds.length){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data: can't find some products, please check (product_id) for each product."
+            };
+            return callback(err)
+        }else{
+            let idWithFullMap = {};
+            products.map((singleProduct) => {
+                idWithFullMap[singleProduct._id] = singleProduct.map;
+            })
+            let newIdWithFullMap = {...idWithFullMap}
+            Object.keys(productsMap).map((product_id) => {
+                if(newIdWithFullMap[product_id][branch_id]){
+                    newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
+                }else{
+                    newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
+                }
+            })
+            Object.keys(newIdWithFullMap).map((product_id)=>{
+                updateOneProduct(product_id,newIdWithFullMap[product_id]);
+            })
+            if(!fountError){return callback(null);}
+        }
+    },(e) => {
+        fountError = true;
+        let err;
+        if(e.name && e.name == 'CastError'){
+            err = {
+                "status": 0,
+                "message": "Wrong value: (" + e.value + ") is not valid product id."
+            };
+        }else{
+            err = {
+                "status": 0,
+                "message": "error hanppen while query products data."
+            };
+        }
+        return callback(err)
+    });
+}
 function updateOneProduct(product_id, updatedMap) { 
     return new Promise(resolve => {
         totalQuantity = 0;
@@ -292,65 +345,107 @@ var checkCustomer = (body, callback) => {
         }, null)
     });
 }
-/* edit feature. */
-router.post('/edit', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('113')){
+/* cancel order. */
+router.post('/cancel', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('125')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to edit feature."
+            "message": "This user does not have perrmission to cancel order."
         });
     }else{
-        let body = _.pick(req.body, ['feature_id','name','options','active']);
-        if(!body.feature_id){
+        let body = _.pick(req.body, ['order_id']);
+        if(!body.order_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (feature_id) field is required."
+                "message": "Missing data, (order_id) field is required."
             });
         }else{
             let user = req.user;
-            let updateBody = {};
-            if(req.body.name){updateBody.name = req.body.name}
-            if(req.body.options){updateBody.options = req.body.options}
-            if(req.body.active){updateBody.active = req.body.active}
-
-            let query;
             if(req.user.type == 'admin'){
-                query = {_id: body.feature_id, parent: req.user._id};
+                body.parent = req.user._id;
             }else if(req.user.type == 'staff'){
-                query = {_id: body.feature_id, parent: req.user.parent};
+                body.parent = req.user.parent;
             }
-            Feature.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-                if(e){
-                    if(e.errmsg && e.errmsg.includes("phoneNumber")){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "This phone number is already exist."
-                        });
-                    }else if(e.name && e.name == "CastError"){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": e.message
-                        });
-                    }else{
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "error while updating data."
-                        });
-                    }
+            let query = {
+                _id: body.order_id, 
+                parent: body.parent
+            };
+            Order.findOne(query)
+            .then((order) => {
+                if(!order){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any order with this order_id."
+                    });
                 }else{
-                    if(response == null){
+                    if(order.creator_id != req.user._id){
                         res.status(400).send({
                             "status": 0,
-                            "message": "can't find any branch with this category_id."
+                            "message": "order must be canceled from the same staff."
                         });
                     }else{
-                        return res.send({
-                            "status": 1,
-                            "data": {"categoryData": response}
-                        });   
+                        if(order.canceled){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "This order is already canceled."
+                            });
+                        }else{
+                            let diffTime = Math.abs(new Date() - order.createdDate);
+                            let diffHours = diffTime / (1000 * 60 * 60);
+                            if(diffHours > 1){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "order can't be cancel after 1 hour."
+                                });
+                            }else{
+                                addProducts(order.products, order.parent, order.branch_id, function(err){
+                                    if(err !== null){
+                                        res.status(400).send(err);
+                                    }else{
+                                        //cancel order
+                                        let updateBody = {
+                                            "canceled": true,
+                                            "canceledDate": new Date()
+                                        };
+                                        Order.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                                            if(e){
+                                                if(e.name && e.name == "CastError"){
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": e.message
+                                                    });
+                                                }else{
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": "error while updating order data."
+                                                    });
+                                                }
+                                            }else{
+                                                return res.send({
+                                                    "status": 1,
+                                                    "data": {"orderData": response}
+                                                });
+                                            }
+                                        })
+                                    }
+                                })
+                            }
+                        }
                     }
                 }
-            })
+            },(e) => {
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Wrong order_id value."
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error happen while query order data."
+                    });
+                }
+            });
         }
     }
 });

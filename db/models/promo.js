@@ -8,17 +8,15 @@ const bcrypt = require('bcryptjs');
 let PromoSchema = new mongoose.Schema({
 	name: { type: String, required: true, minlenght: 2, trim: true },
 	// DOL(discount on limit)
-	type: { type: String, trim: true, required: true },
+	type: { type: String, trim: true, required: true, enum: ['DOL'] },
 	limit: { type: Number, min: 0, required: true },
-	// value/percentage
-	discountType: { type: String, trim: true, required: true },
+	discountType: { type: String, trim: true, required: true, enum: ['VALUE','PERCENTAGE'] },
 	discountValue: { type: Number, min: 0, required: true },
 	createdDate: { type: Date, required: true, trim: true },
 	startDate: { type: Date, required: true, trim: true },
 	endDate: { type: Date, required: true, trim: true },
 	validTimesPerCustomer: { type: Number, min: 0, required: true },
-	// All/SELECTED
-	customerType: { type: String, trim: true, required: true },
+	customerType: { type: String, trim: true, required: true, enum: ['All','SELECTED']},
 	customers: { type: Array, required: true },
 	sms: { type: Boolean, required: true },
 	active: { type: Boolean, required: true },
