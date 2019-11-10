@@ -31,49 +31,53 @@ router.post('/create', authenticate, function(req, res, next) {
                 if(err !== null){
                     res.status(400).send(err);
                 }else{
-                    console.log("branch_id ready to goooo");
                     checkCustomer(body, function(err, customer){
                         if(err !== null){
                             res.status(400).send(err);
                         }else{
-                            console.log("customer ready to goooo");
-                            //console.log(customer)
                             productsFormatCheck(body, function(err){
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
-                                    console.log("products format ready to goooo");
                                     checkProductsAvailability(body, function(err){
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            console.log("products avilability ready to goooo");
-                                            console.log(body.bill);
-                                            console.log(body.subTotal);
-                                            console.log(body.finalProductsQuantityMap)
                                             checkPromo(body, function(err){
                                                 if(err !== null){
                                                     res.status(400).send(err);
                                                 }else{
-                                                    console.log("promo ready to goooo");
                                                     removeProducts(body, function(err){
                                                         if(err !== null){
                                                             res.status(400).send(err);
                                                         }else{
-                                                            console.log("removed products from the branch")
-                                                            // //create the transfer
-                                                            // let newTransferData = new Transfer(body);
-                                                            // newTransferData.save().then((newTransfer) => {                
-                                                            //     return res.status(201).send({
-                                                            //         "status": 1,
-                                                            //         "data": {"transferData": newTransfer}
-                                                            //     });
-                                                            // }).catch((e) => {
-                                                            //     res.status(400).send({
-                                                            //         "status": 0,
-                                                            //         "message": e
-                                                            //     });
-                                                            // });
+                                                            //create the order
+                                                            let orderObj = {
+                                                                "customer_id": customer._id,
+                                                                "products": body.products,
+                                                                "bill": body.bill,
+                                                                "subTotal": body.subTotal,
+                                                                "total": body.total,
+                                                                "promo": body.promo,
+                                                                "promo_id": body.promo_id,
+                                                                "discountValue": body.discountValue,
+                                                                "createdDate": new Date(),
+                                                                "branch_id": body.branch_id,
+                                                                "creator_id": req.user._id,
+                                                                "parent": body.parent
+                                                            }
+                                                            let newOrderData = new Order(orderObj);
+                                                            newOrderData.save().then((newOrder) => {                
+                                                                return res.status(201).send({
+                                                                    "status": 1,
+                                                                    "data": {"orderData": newOrder}
+                                                                });
+                                                            }).catch((e) => {
+                                                                res.status(400).send({
+                                                                    "status": 0,
+                                                                    "message": e
+                                                                });
+                                                            });
                                                         }
                                                     })
                                                 }
@@ -92,10 +96,14 @@ router.post('/create', authenticate, function(req, res, next) {
 var checkPromo = (body, callback) => {
     if(!body.promo){
         //no promo
+        body.promo_id = null;
+        body.discountValue = 0;
         body.total = body.subTotal;
         callback(null);
     }else{
         //promo
+        body.promo_id = null;
+        body.discountValue = 0;
         body.total = body.subTotal;
         callback(null);
     }
@@ -257,7 +265,6 @@ var checkCustomer = (body, callback) => {
     Customer.findOne({phoneNumber: body.customerPhone, parent: body.parent})
     .then((customer) => {
         if(!customer){
-            console.log("new customer")
             let customerObj = {
                 "name": body.customerName,
                 "phoneNumber": body.customerPhone,

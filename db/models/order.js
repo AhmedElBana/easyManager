@@ -16,7 +16,6 @@ let OrderSchema = new mongoose.Schema({
 	discountValue: { type: Number, min: 0, required: true },
 	createdDate: { type: Date, required: true, trim: true },
 	branch_id: { type: String, required: true, minlenght: 2, trim: true },
-	staff_id: { type: String, required: true, minlenght: 2, trim: true },
 	creator_id: { type: String, trim: true, required: true },
 	parent: { type: String, trim: true, required: true }
 });
@@ -24,7 +23,7 @@ let OrderSchema = new mongoose.Schema({
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','customer_id','products','bill','subTotal','total','promo','promo_id','discountValue','createdDate','branch_id','staff_id','creator_id','parent']);
+	return _.pick(OrderObject, ['_id','customer_id','products','bill','subTotal','total','promo','promo_id','discountValue','createdDate','branch_id','creator_id','parent']);
 }
 OrderSchema.index({ name: 1, parent: 1 }, { unique: true });
 
