@@ -25,7 +25,6 @@ OrderSchema.methods.toJSON = function(){
 	let OrderObject = Order.toObject();
 	return _.pick(OrderObject, ['_id','customer_id','products','bill','subTotal','total','promo','promo_id','discountValue','createdDate','branch_id','creator_id','parent']);
 }
-OrderSchema.index({ name: 1, parent: 1 }, { unique: true });
 
 OrderSchema.plugin(mongoosePaginate);
 let Order = mongoose.model('Order', OrderSchema);
