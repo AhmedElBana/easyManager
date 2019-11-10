@@ -48,6 +48,36 @@ router.post('/create', authenticate, function(req, res, next) {
                                             res.status(400).send(err);
                                         }else{
                                             console.log("products avilability ready to goooo");
+                                            console.log(body.bill);
+                                            console.log(body.subTotal);
+                                            console.log(body.finalProductsQuantityMap)
+                                            checkPromo(body, function(err){
+                                                if(err !== null){
+                                                    res.status(400).send(err);
+                                                }else{
+                                                    console.log("promo ready to goooo");
+                                                    removeProducts(body, function(err){
+                                                        if(err !== null){
+                                                            res.status(400).send(err);
+                                                        }else{
+                                                            console.log("removed products from the branch")
+                                                            // //create the transfer
+                                                            // let newTransferData = new Transfer(body);
+                                                            // newTransferData.save().then((newTransfer) => {                
+                                                            //     return res.status(201).send({
+                                                            //         "status": 1,
+                                                            //         "data": {"transferData": newTransfer}
+                                                            //     });
+                                                            // }).catch((e) => {
+                                                            //     res.status(400).send({
+                                                            //         "status": 0,
+                                                            //         "message": e
+                                                            //     });
+                                                            // });
+                                                        }
+                                                    })
+                                                }
+                                            })
                                         }
                                     })
                                 }
@@ -59,6 +89,17 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+var checkPromo = (body, callback) => {
+    if(!body.promo){
+        //no promo
+        body.total = body.subTotal;
+        callback(null);
+    }else{
+        //promo
+        body.total = body.subTotal;
+        callback(null);
+    }
+}
 var checkProductsAvailability = (body, callback) => {
     let fountError = false;
     let productsArr = [];
@@ -88,11 +129,23 @@ var checkProductsAvailability = (body, callback) => {
                         return callback(err)
                     }
                 })
+                let bill = [];
+                let totalPrice = 0;
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
                     newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
                     finalProductsQuantityMap[singleProduct._id] = newMapObj
+                    bill.push({
+                        "_id": singleProduct._id,
+                        "name": singleProduct.name,
+                        "quantity": productsQuantityMap[singleProduct._id.toString()],
+                        "price": singleProduct.price,
+                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
+                    })
+                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
                 })
+                body.bill = bill;
+                body.subTotal = totalPrice;
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
                 if(!fountError){return callback(null);}
             }
@@ -144,6 +197,29 @@ var productsFormatCheck = (body, callback) => {
         })
     }
     if(!fountError){return callback(null);}
+}
+async function removeProducts(body, callback) {
+    Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
+        updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
+    })
+    callback(null);
+}
+function updateOneProduct(product_id, updatedMap) { 
+    return new Promise(resolve => {
+        totalQuantity = 0;
+        Object.keys(updatedMap).map((branch_id)=>{
+            totalQuantity += updatedMap[branch_id]
+        })
+        let updateBody = {"map": updatedMap, "quantity": totalQuantity};
+        let query = {_id: product_id};
+        Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                console.log(e)
+            }else{
+                resolve(response);
+            }
+        })
+    });
 }
 var checkBranch = (req, body, callback) => {
     Branch.findOne({_id: body.branch_id, parent: body.parent})

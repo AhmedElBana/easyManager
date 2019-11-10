@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 let OrderSchema = new mongoose.Schema({
 	customer_id: { type: String, required: true, minlenght: 2, trim: true },
 	products: { type: Array, required: true },
+	bill: { type: Array, required: true },
 	subTotal: { type: Number, min: 0, required: true },
 	total: { type: Number, min: 0, required: true },
 	promo: { type: Boolean, required: true },
@@ -23,7 +24,7 @@ let OrderSchema = new mongoose.Schema({
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','customer_id','products','subTotal','total','promo','promo_id','discountValue','createdDate','branch_id','staff_id','creator_id','parent']);
+	return _.pick(OrderObject, ['_id','customer_id','products','bill','subTotal','total','promo','promo_id','discountValue','createdDate','branch_id','staff_id','creator_id','parent']);
 }
 OrderSchema.index({ name: 1, parent: 1 }, { unique: true });
 

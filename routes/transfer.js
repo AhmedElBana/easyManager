@@ -485,7 +485,11 @@ var checkBranches = (body, callback) => {
 // updateOneProduct used with removeProducts/addProducts
 function updateOneProduct(product_id, updatedMap) { 
     return new Promise(resolve => {
-        let updateBody = {"map": updatedMap};
+        totalQuantity = 0;
+        Object.keys(updatedMap).map((branch_id)=>{
+            totalQuantity += updatedMap[branch_id]
+        })
+        let updateBody = {"map": updatedMap, "quantity": totalQuantity};
         let query = {_id: product_id};
         Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
             if(e){
