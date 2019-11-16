@@ -13,6 +13,7 @@ var productGroupRouter = require('./routes/productGroup')
 var productRouter = require('./routes/product')
 var transferRouter = require('./routes/transfer')
 var orderRouter = require('./routes/order')
+var promoRouter = require('./routes/promo')
 
 var app = express();
 
@@ -45,5 +46,6 @@ app.use('/api/productGroup', productGroupRouter);
 app.use('/api/product', productRouter);
 app.use('/api/transfer', transferRouter);
 app.use('/api/order', orderRouter);
+app.use('/api/promo', promoRouter);
 
 module.exports = app;
