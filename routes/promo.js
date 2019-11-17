@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {Promo} = require('../db/models/promo');
+let {Customer} = require('../db/models/customer');
 let {Branch} = require('../db/models/branch');
 let {authenticate} = require('../middleware/authenticate');
 
@@ -28,41 +29,104 @@ router.post('/create', authenticate, function(req, res, next) {
             body.createdDate = new Date();
             body.active = true;
             body.creator_id = req.user._id;
-
-            console.log(body);
             checkDiscount(body, function(err){
                 if(err !== null){
                     res.status(400).send(err);
                 }else{
-                    let newPromoData = new Promo(body);
-                    newPromoData.save().then((newPromo) => {                
-                        return res.status(201).send({
-                            "status": 1,
-                            "data": {"promoData": newPromo}
-                        });
-                    }).catch((e) => {
-                        if(e.code && e.code == 11000){
-                            res.status(400).send({
-                                "status": 0,
-                                "message": "you have another promo with the same name."
-                            });
-                        }else if(e.message){
-                            res.status(400).send({
-                                "status": 0,
-                                "message": e.message
-                            });
+                    //check customers
+                    checkCustomers(body, function(err){
+                        if(err !== null){
+                            res.status(400).send(err);
                         }else{
-                            res.status(400).send({
-                                "status": 0,
-                                "message": e
+                            let newPromoData = new Promo(body);
+                            newPromoData.save().then((newPromo) => {                
+                                return res.status(201).send({
+                                    "status": 1,
+                                    "data": {"promoData": newPromo}
+                                });
+                            }).catch((e) => {
+                                if(e.code && e.code == 11000){
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": "you have another promo with the same name."
+                                    });
+                                }else if(e.message){
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": e.message
+                                    });
+                                }else{
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": e
+                                    });
+                                }
                             });
                         }
-                    });
+                    })
                 }
             })
         }
     }
 });
+async function checkCustomers(body, callback){
+    if(body.customerType !== 'ALL' && body.customerType !== "SELECTED"){
+        fountError = true;
+        let err = {
+            "status": 0,
+            "message": "Wrong data (customerType) must be (ALL/SELECTED)."
+        }
+        return callback(err);
+    }else if(body.customerType == "ALL"){
+        delete body.customers
+        return callback(null);
+    }else if(body.customerType == "SELECTED"){
+        if(typeof(body.customers) !== 'object' || !body.customers[0]){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (customers) must be array of customer IDs."
+            }
+            return callback(err);
+        }else{
+            //check customers ids
+            compareCustomerIDs(body).then((data) => {
+                //match all customers ids
+                return callback(null);
+            }, (err) => {
+                fountError = true;
+                return callback(err);
+            });
+        }
+    }
+}
+function compareCustomerIDs(body) {
+    return new Promise((resolve, reject) => {
+        Customer.find({'_id': { $in: body.customers}, 'parent': body.parent})
+        .then((customers) => {
+            if(customers.length !== body.customers.length){
+                reject({
+                    "status": 0,
+                    "message": "Wrong data: can't find some customers, please check (customers) values."
+                });
+            }else{
+                resolve();
+            }
+        },(e) => {
+            if(e.name && e.name == 'CastError'){
+                reject({
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid customer id."
+                });
+            }else{
+                reject({
+                    "status": 0,
+                    "message": "error hanppen while query customers data."
+                });
+            }
+        });
+    });
+}
 var checkDiscount = (body, callback) => {
     let fountError = false;
     if(body.discountType !== 'VALUE' && body.discountType !== "PERCENTAGE"){
