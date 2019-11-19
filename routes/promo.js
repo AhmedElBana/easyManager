@@ -1,9 +1,11 @@
 var express = require('express');
+const axios = require('axios');
 var router = express.Router();
 const _ = require('lodash');
 let {Promo} = require('../db/models/promo');
 let {Customer} = require('../db/models/customer');
 let {Branch} = require('../db/models/branch');
+let {Store} = require('../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
 
 /* Create new promo. */
@@ -38,30 +40,44 @@ router.post('/create', authenticate, function(req, res, next) {
                         if(err !== null){
                             res.status(400).send(err);
                         }else{
-                            let newPromoData = new Promo(body);
-                            newPromoData.save().then((newPromo) => {                
-                                return res.status(201).send({
-                                    "status": 1,
-                                    "data": {"promoData": newPromo}
-                                });
-                            }).catch((e) => {
-                                if(e.code && e.code == 11000){
-                                    res.status(400).send({
-                                        "status": 0,
-                                        "message": "you have another promo with the same name."
-                                    });
-                                }else if(e.message){
-                                    res.status(400).send({
-                                        "status": 0,
-                                        "message": e.message
-                                    });
+                            //check branches
+                            checkBranches(body, function(err){
+                                if(err !== null){
+                                    res.status(400).send(err);
                                 }else{
-                                    res.status(400).send({
-                                        "status": 0,
-                                        "message": e
-                                    });
+                                    //check SMS
+                                    SMS(body, function(err){
+                                        if(err !== null){
+                                            res.status(400).send(err);
+                                        }else{
+                                            let newPromoData = new Promo(body);
+                                            newPromoData.save().then((newPromo) => {                
+                                                return res.status(201).send({
+                                                    "status": 1,
+                                                    "data": {"promoData": newPromo}
+                                                });
+                                            }).catch((e) => {
+                                                if(e.code && e.code == 11000){
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": "you have another promo with the same name."
+                                                    });
+                                                }else if(e.message){
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": e.message
+                                                    });
+                                                }else{
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": e
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    })
                                 }
-                            });
+                            })
                         }
                     })
                 }
@@ -69,6 +85,189 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+var SMS = (body, callback) => {
+    if(body.sms == "false"){
+        return callback(null);
+    }else{
+        Store.findOne({'parent': body.parent})
+        .then((store) => {
+            if(!store){
+                let err = {
+                    "status": 0,
+                    "message": "can't find any store for this user."
+                };
+                return callback(err);
+            }else{
+                console.log(store)
+                body.availableSMS = store.availableSMS;
+                checkSMS(body, function(err){
+                    if(err !== null){
+                        callback(err);
+                    }else{
+                        sendSMS(body, function(err){
+                            if(err !== null){
+                                callback(err);
+                            }else{
+                                console.log("sms sent sucessfully.")
+                                callback(null)
+                            }
+                        })
+                    }
+                })
+            }
+        },(e) => {
+            let err = {
+                "status": 0,
+                "message": "error hanppen while query store data."
+            };
+            return callback(err);
+        });
+    }
+}
+var sendSMS = (body, callback) => {
+    let discountType = "";
+    if(body.discountType == "PERCENTAGE"){
+        discountType = "%"
+    }else{
+        discountType = "EGP"
+    }
+    let customersPhoneArr = "";
+    body.customersData.map((customer, index) => {
+        if(body.customersData.length == index + 1){
+            customersPhoneArr += customer.phoneNumber + ""
+        }else{
+            customersPhoneArr += customer.phoneNumber + ","
+        }
+    })
+    console.log(customersPhoneArr)
+    let url = "https://smsmisr.com/api/webapi/";
+    let config ={
+        headers: {
+            "Content-Type": "application/json "
+        },
+        params: {
+            "Username": process.env.SMS_USER,
+            "password": process.env.SMS_PASS,
+            "language": 1,
+            "sender": process.env.SMS_SENDER,
+            "Mobile": customersPhoneArr,
+            "message": "Promo: " + body.name + " . get discount: " + body.discountValue + "" + discountType + " on order more than " + body.limit + "EGP. promo valid for " + body.validTimesPerCustomer + "times."
+        }
+    }
+    axios.post(url, {}, config)
+    .then(response => {
+        if(response.data.code == 1901){
+            callback(null)
+        }else{
+            console.log(response.data)
+            callback({
+                "status": 0,
+                "message": "SMS sending failed."
+            });
+        }
+    })
+    .catch(error => {
+        callback({
+            "status": 0,
+            "message": "error happen while sending SMS."
+        });
+    });
+}
+var checkSMS = (body, callback) => {
+    if(body.customerType == "ALL"){
+        //get all customers
+        Customer.find({'parent': body.parent})
+        .then((customers) => {
+            body.customersData = customers;
+            if(customers.length > body.availableSMS){
+                callback({
+                    "status": 0,
+                    "message": "Don't have enough available SMS."
+                });
+            }else{
+                callback(null)
+            }
+        },(e) => {
+            callback({
+                "status": 0,
+                "message": "error hanppen while query customers data."
+            });
+        });
+    }else if(body.customerType == "SELECTED"){
+        if(body.customers.length > body.availableSMS){
+            callback({
+                "status": 0,
+                "message": "Don't have enough available SMS."
+            });
+        }else{
+            callback(null)
+        }
+    }else{
+        let err = {
+            "status": 0,
+            "message": "wronge customerType value."
+        };
+        return callback(err);
+    }
+}
+async function checkBranches(body, callback){
+    if(body.branchesType !== 'ALL' && body.branchesType !== "SELECTED"){
+        fountError = true;
+        let err = {
+            "status": 0,
+            "message": "Wrong data (branchesType) must be (ALL/SELECTED)."
+        }
+        return callback(err);
+    }else if(body.branchesType == "ALL"){
+        delete body.branches
+        return callback(null);
+    }else if(body.branchesType == "SELECTED"){
+        if(typeof(body.branches) !== 'object' || !body.branches[0]){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (branches) must be array of customer IDs."
+            }
+            return callback(err);
+        }else{
+            //check customers ids
+            compareBranchesIDs(body).then((data) => {
+                //match all customers ids
+                return callback(null);
+            }, (err) => {
+                fountError = true;
+                return callback(err);
+            });
+        }
+    }
+}
+function compareBranchesIDs(body) {
+    return new Promise((resolve, reject) => {
+        Branch.find({'_id': { $in: body.branches}, 'parent': body.parent})
+        .then((branches) => {
+            if(branches.length !== body.branches.length){
+                reject({
+                    "status": 0,
+                    "message": "Wrong data: can't find some branches, please check (branches) values."
+                });
+            }else{
+                resolve();
+            }
+        },(e) => {
+            if(e.name && e.name == 'CastError'){
+                reject({
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid branch id => field: (branches)."
+                });
+            }else{
+                reject({
+                    "status": 0,
+                    "message": "error hanppen while query branches data."
+                });
+            }
+        });
+    });
+}
 async function checkCustomers(body, callback){
     if(body.customerType !== 'ALL' && body.customerType !== "SELECTED"){
         fountError = true;
@@ -110,6 +309,7 @@ function compareCustomerIDs(body) {
                     "message": "Wrong data: can't find some customers, please check (customers) values."
                 });
             }else{
+                body.customersData = customers;
                 resolve();
             }
         },(e) => {
