@@ -20,6 +20,8 @@ let PromoSchema = new mongoose.Schema({
 	customers: { type: Array },
 	branchesType: { type: String, trim: true, required: true, enum: ['ALL','SELECTED']},
 	branches: { type: Array },
+	productsType: { type: String, trim: true, required: true, enum: ['ALL','SELECTED']},
+	products: { type: Array },
 	sms: { type: Boolean, required: true },
 	active: { type: Boolean, required: true },
 	creator_id: { type: String, trim: true, required: true },
@@ -29,7 +31,7 @@ let PromoSchema = new mongoose.Schema({
 PromoSchema.methods.toJSON = function(){
 	let Promo = this;
 	let PromoObject = Promo.toObject();
-	return _.pick(PromoObject, ['_id','name','type','limit','discountType','discountValue','createdDate','startDate','endDate','validTimesPerCustomer','customerType','customers','branchesType','branches','sms','creator_id','active','parent']);
+	return _.pick(PromoObject, ['_id','name','type','limit','discountType','discountValue','createdDate','startDate','endDate','validTimesPerCustomer','customerType','customers','branchesType','branches','productsType','products','sms','creator_id','active','parent']);
 }
 PromoSchema.index({ name: 1, parent: 1 }, { unique: true });
 

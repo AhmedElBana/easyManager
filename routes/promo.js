@@ -5,6 +5,7 @@ const _ = require('lodash');
 let {Promo} = require('../db/models/promo');
 let {Customer} = require('../db/models/customer');
 let {Branch} = require('../db/models/branch');
+let {Product} = require('../db/models/product');
 let {Store} = require('../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
 
@@ -16,11 +17,11 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new promo."
         });
     }else{
-        let body = _.pick(req.body, ['name','type','limit','discountType','discountValue','startDate','endDate','validTimesPerCustomer','customerType','customers','branchesType','branches','sms']);
-        if(!body.name || !body.type || !body.limit || !body.discountType || !body.discountValue || !body.startDate || !body.endDate || !body.validTimesPerCustomer || !body.customerType || !body.branchesType || !body.sms){
+        let body = _.pick(req.body, ['name','type','limit','discountType','discountValue','startDate','endDate','validTimesPerCustomer','customerType','customers','branchesType','branches','productsType','products','sms']);
+        if(!body.name || !body.type || !body.limit || !body.discountType || !body.discountValue || !body.startDate || !body.endDate || !body.validTimesPerCustomer || !body.customerType || !body.branchesType || !body.productsType || !body.sms){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, type, limit, discountType, discountValue, startDate, endDate, validTimesPerCustomer, customerType, branchesType, sms) fields are required."
+                "message": "Missing data, (name, type, limit, discountType, discountValue, startDate, endDate, validTimesPerCustomer, customerType, branchesType, productsType, sms) fields are required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -45,35 +46,41 @@ router.post('/create', authenticate, function(req, res, next) {
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
-                                    //check SMS
-                                    SMS(body, function(err){
+                                    checkProducts(body, function(err){
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            let newPromoData = new Promo(body);
-                                            newPromoData.save().then((newPromo) => {                
-                                                return res.status(201).send({
-                                                    "status": 1,
-                                                    "data": {"promoData": newPromo}
-                                                });
-                                            }).catch((e) => {
-                                                if(e.code && e.code == 11000){
-                                                    res.status(400).send({
-                                                        "status": 0,
-                                                        "message": "you have another promo with the same name."
-                                                    });
-                                                }else if(e.message){
-                                                    res.status(400).send({
-                                                        "status": 0,
-                                                        "message": e.message
-                                                    });
+                                            //send SMS
+                                            SMS(body, function(err){
+                                                if(err !== null){
+                                                    res.status(400).send(err);
                                                 }else{
-                                                    res.status(400).send({
-                                                        "status": 0,
-                                                        "message": e
+                                                    let newPromoData = new Promo(body);
+                                                    newPromoData.save().then((newPromo) => {                
+                                                        return res.status(201).send({
+                                                            "status": 1,
+                                                            "data": {"promoData": newPromo}
+                                                        });
+                                                    }).catch((e) => {
+                                                        if(e.code && e.code == 11000){
+                                                            res.status(400).send({
+                                                                "status": 0,
+                                                                "message": "you have another promo with the same name."
+                                                            });
+                                                        }else if(e.message){
+                                                            res.status(400).send({
+                                                                "status": 0,
+                                                                "message": e.message
+                                                            });
+                                                        }else{
+                                                            res.status(400).send({
+                                                                "status": 0,
+                                                                "message": e
+                                                            });
+                                                        }
                                                     });
                                                 }
-                                            });
+                                            })
                                         }
                                     })
                                 }
@@ -263,6 +270,64 @@ function compareBranchesIDs(body) {
                 reject({
                     "status": 0,
                     "message": "error hanppen while query branches data."
+                });
+            }
+        });
+    });
+}
+async function checkProducts(body, callback){
+    if(body.productsType !== 'ALL' && body.productsType !== "SELECTED"){
+        fountError = true;
+        let err = {
+            "status": 0,
+            "message": "Wrong data (productsType) must be (ALL/SELECTED)."
+        }
+        return callback(err);
+    }else if(body.productsType == "ALL"){
+        delete body.products
+        return callback(null);
+    }else if(body.productsType == "SELECTED"){
+        if(typeof(body.products) !== 'object' || !body.products[0]){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (products) must be array of product IDs."
+            }
+            return callback(err);
+        }else{
+            //check products ids
+            compareProductsIDs(body).then((data) => {
+                //match all products ids
+                return callback(null);
+            }, (err) => {
+                fountError = true;
+                return callback(err);
+            });
+        }
+    }
+}
+function compareProductsIDs(body) {
+    return new Promise((resolve, reject) => {
+        Product.find({'_id': { $in: body.products}, 'parent': body.parent})
+        .then((products) => {
+            if(products.length !== body.products.length){
+                reject({
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (products) values."
+                });
+            }else{
+                resolve();
+            }
+        },(e) => {
+            if(e.name && e.name == 'CastError'){
+                reject({
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id => field: (products)."
+                });
+            }else{
+                reject({
+                    "status": 0,
+                    "message": "error hanppen while query products data."
                 });
             }
         });
