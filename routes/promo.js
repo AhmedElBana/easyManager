@@ -629,12 +629,100 @@ var reSMS = (body, callback) => {
         return callback(err);
     });
 }
-/* list branches. */
-router.get('/list', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('104')){
+/* activate promo. */
+router.get('/activate', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('129')){
         res.status(400).send({
             "status": 0,
-            "message": "This user does not have perrmission to view branches."
+            "message": "This user does not have perrmission to activate promo."
+        });
+    }else{
+        if(!req.query.promo_id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (promo_id) field is required."
+            });
+        }else{
+            let updateBody = {active: true};
+            let query;
+            if(req.user.type == 'admin'){
+                query = {_id: req.query.promo_id, parent: req.user._id};
+            }else if(req.user.type == 'staff'){
+                query = {_id: req.query.promo_id, parent: req.user.parent};
+            }
+            Promo.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                if(e){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "wrong promo_id."
+                    })
+                }else{
+                    if(response == null){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't find any promo with this promo_id."
+                        });
+                    }else{
+                        return res.send({
+                            "status": 1,
+                            "data": {"promoData": response}
+                        });   
+                    }
+                }
+            })
+        }
+    }
+});
+/* deactivate promo. */
+router.get('/deactivate', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('130')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to deactivate promo."
+        });
+    }else{
+        if(!req.query.promo_id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (promo_id) field is required."
+            });
+        }else{
+            let updateBody = {active: false};
+            let query;
+            if(req.user.type == 'admin'){
+                query = {_id: req.query.promo_id, parent: req.user._id};
+            }else if(req.user.type == 'staff'){
+                query = {_id: req.query.promo_id, parent: req.user.parent};
+            }
+            Promo.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                if(e){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "wrong promo_id."
+                    })
+                }else{
+                    if(response == null){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't find any promo with this promo_id."
+                        });
+                    }else{
+                        return res.send({
+                            "status": 1,
+                            "data": {"promoData": response}
+                        });   
+                    }
+                }
+            })
+        }
+    }
+});
+/* list promo. */
+router.get('/list', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('127')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to view promos."
         });
     }else{
         let page;
@@ -655,14 +743,14 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        Branch.paginate(filters, options, function(err, result) {
+        Promo.paginate(filters, options, function(err, result) {
             let next;
             if(result.hasNextPage){
-                next = "https://" + req.headers.host + "/api/branch/list?page=" + result.nextPage + "&page_size=" + page_size;
+                next = "https://" + req.headers.host + "/api/promo/list?page=" + result.nextPage + "&page_size=" + page_size;
             }else{next = null;}
             let prev;
             if(result.hasPrevPage){
-                prev = "https://" + req.headers.host + "/api/branch/list?page=" + result.prevPage + "&page_size=" + page_size;
+                prev = "https://" + req.headers.host + "/api/promo/list?page=" + result.prevPage + "&page_size=" + page_size;
             }else{prev = null;}
             let data = {
                 total: result.totalDocs,
