@@ -50,35 +50,40 @@ router.post('/create', authenticate, function(req, res, next) {
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            //send SMS
-                                            SMS(body, function(err){
+                                            //create new promo
+                                            craetePromo(body, function(err){
                                                 if(err !== null){
                                                     res.status(400).send(err);
                                                 }else{
-                                                    let newPromoData = new Promo(body);
-                                                    newPromoData.save().then((newPromo) => {                
-                                                        return res.status(201).send({
-                                                            "status": 1,
-                                                            "data": {"promoData": newPromo}
-                                                        });
-                                                    }).catch((e) => {
-                                                        if(e.code && e.code == 11000){
-                                                            res.status(400).send({
-                                                                "status": 0,
-                                                                "message": "you have another promo with the same name."
-                                                            });
-                                                        }else if(e.message){
-                                                            res.status(400).send({
-                                                                "status": 0,
-                                                                "message": e.message
-                                                            });
+                                                    //send SMS
+                                                    SMS(body, function(err){
+                                                        if(err !== null){
+                                                            // update promo sms to false
+                                                            updatePromoSmsStatus(body, function(err){
+                                                                if(err !== null){
+                                                                    res.status(400).send(err);
+                                                                }else{
+                                                                    res.status(201).send({
+                                                                        "status": 0,
+                                                                        "data": body.promoData,
+                                                                        "message": "Promo created but fiald to send SMS please try to re-send SMS again later."
+                                                                    });
+                                                                }
+                                                            })
                                                         }else{
-                                                            res.status(400).send({
-                                                                "status": 0,
-                                                                "message": e
-                                                            });
+                                                            // update store number of avilable sms
+                                                            updateStoreSmsCalc(body, function(err){
+                                                                if(err !== null){
+                                                                    res.status(400).send(err);
+                                                                }else{
+                                                                    res.status(201).send({
+                                                                        "status": 1,
+                                                                        "message": body.promoData
+                                                                    });
+                                                                }
+                                                            })
                                                         }
-                                                    });
+                                                    })
                                                 }
                                             })
                                         }
@@ -92,6 +97,59 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+var updateStoreSmsCalc = (body, callback) => {
+    let updateBody = {$inc : {'usedSMS' : body.customersData.length, 'availableSMS' : -body.customersData.length}};
+    let query = {'parent': body.parent};
+    Store.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            callback({
+                "status": 0,
+                "message": "error happen while update store sms status."
+            })
+        }else{
+            callback(null)
+        }
+    })
+}
+var updatePromoSmsStatus = (body, callback) => {
+    let updateBody = {"sms": false};
+    let query = {_id: body.promoData._id};
+    Promo.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            callback({
+                "status": 0,
+                "message": "error happen while update promo sms status."
+            })
+        }else{
+            body.promoData = response;
+            callback(null)
+        }
+    })
+}
+var craetePromo = (body, callback) => {
+    let newPromoData = new Promo(body);
+    newPromoData.save().then((newPromo) => {
+        body.promoData = newPromo;
+        callback(null);
+    }).catch((e) => {
+        if(e.code && e.code == 11000){
+            callback({
+                "status": 0,
+                "message": "you have another promo with the same name."
+            });
+        }else if(e.message){
+            callback({
+                "status": 0,
+                "message": e.message
+            });
+        }else{
+            callback({
+                "status": 0,
+                "message": e
+            });
+        }
+    });
+}
 var SMS = (body, callback) => {
     if(body.sms == "false"){
         return callback(null);
@@ -105,7 +163,6 @@ var SMS = (body, callback) => {
                 };
                 return callback(err);
             }else{
-                console.log(store)
                 body.availableSMS = store.availableSMS;
                 checkSMS(body, function(err){
                     if(err !== null){
@@ -146,7 +203,6 @@ var sendSMS = (body, callback) => {
             customersPhoneArr += customer.phoneNumber + ","
         }
     })
-    console.log(customersPhoneArr)
     let url = "https://smsmisr.com/api/webapi/";
     let config ={
         headers: {
