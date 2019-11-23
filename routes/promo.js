@@ -188,6 +188,7 @@ var SMS = (body, callback) => {
         });
     }
 }
+// used in create/resend
 var sendSMS = (body, callback) => {
     let discountType = "";
     if(body.discountType == "PERCENTAGE"){
@@ -203,6 +204,7 @@ var sendSMS = (body, callback) => {
             customersPhoneArr += customer.phoneNumber + ","
         }
     })
+    console.log(customersPhoneArr)
     let url = "https://smsmisr.com/api/webapi/";
     let config ={
         headers: {
@@ -222,10 +224,9 @@ var sendSMS = (body, callback) => {
         if(response.data.code == 1901){
             callback(null)
         }else{
-            console.log(response.data)
             callback({
                 "status": 0,
-                "message": "SMS sending failed."
+                "message": "Fiald to send SMS please try to re-send SMS again later."
             });
         }
     })
@@ -236,6 +237,7 @@ var sendSMS = (body, callback) => {
         });
     });
 }
+// used in create/resend
 var checkSMS = (body, callback) => {
     if(body.customerType == "ALL"){
         //get all customers
@@ -389,6 +391,7 @@ function compareProductsIDs(body) {
         });
     });
 }
+// used in create/resend
 async function checkCustomers(body, callback){
     if(body.customerType !== 'ALL' && body.customerType !== "SELECTED"){
         fountError = true;
@@ -479,70 +482,153 @@ var checkDiscount = (body, callback) => {
     if(!fountError){return callback(null);}
 }
 /* edit branch. */
-router.post('/edit', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('106')){
+router.get('/sms/resend', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('128')){
         res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to edit branch."
         });
     }else{
-        let body = _.pick(req.body, ['branch_id','name','phoneNumber','address','type','active']);
-        if(!body.branch_id){
+        if(!req.query.promo_id){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (branch_id) field is required."
+                "message": "Missing data, (promo_id) field is required."
             });
         }else{
-            let user = req.user;
-            let updateBody = {};
-            if(req.body.name){updateBody.name = req.body.name}
-            if(req.body.phoneNumber){updateBody.phoneNumber = req.body.phoneNumber}
-            if(req.body.address){updateBody.address = req.body.address}
-            if(req.body.type){updateBody.type = req.body.type}
-            if(req.body.active){updateBody.active = req.body.active}
-
-            let query;
+            let body = {};
             if(req.user.type == 'admin'){
-                query = {_id: body.branch_id, parent: req.user._id};
+                body.parent = req.user._id;
             }else if(req.user.type == 'staff'){
-                query = {_id: body.branch_id, parent: req.user.parent};
+                body.parent = req.user.parent;
             }
-            Branch.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-                if(e){
-                    if(e.errmsg && e.errmsg.includes("phoneNumber")){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "This phone number is already exist."
-                        });
-                    }else if(e.name && e.name == "CastError"){
-                        res.status(400).send({
-                            "status": 0,
-                            "message": e.message
-                        });
-                    }else{
-                        res.status(400).send({
-                            "status": 0,
-                            "message": "error while updating user data."
-                        });
-                    }
+            Promo.findOne({_id: req.query.promo_id, parent: body.parent})
+            .then((promo) => {
+                if(!promo){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "wrong promo_id."
+                    })
                 }else{
-                    if(response == null){
+                    if(promo.sms){
                         res.status(400).send({
                             "status": 0,
-                            "message": "can't find any branch with this branch_id."
-                        });
+                            "message": "SMS already sent for this promo."
+                        })
                     }else{
-                        return res.send({
-                            "status": 1,
-                            "data": {"branchData": response}
-                        });   
+                        body.promo = promo;
+                        body = {...body, ...promo._doc}
+                        smsResend(body, function(err){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                // update store number of avilable sms
+                                resendUpdateStoreSmsCalc(body, function(err){
+                                    if(err !== null){
+                                        res.status(400).send(err);
+                                    }else{
+                                        resendUpdatePromoSmsStatus(body, function(err){
+                                            if(err !== null){
+                                                res.status(400).send(err);
+                                            }else{
+                                                res.send({
+                                                    "status": 1,
+                                                    "message": "SMS sent successfully."
+                                                })
+                                            }
+                                        })
+                                    }
+                                })
+                            }
+                        })
                     }
                 }
-            })
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "error happen while query promo data."
+                })
+            });
         }
     }
 });
-
+var resendUpdateStoreSmsCalc = (body, callback) => {
+    let updateBody = {$inc : {'usedSMS' : body.customersData.length, 'availableSMS' : -body.customersData.length}};
+    let query = {'parent': body.parent};
+    Store.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            callback({
+                "status": 0,
+                "message": "error happen while update store sms status."
+            })
+        }else{
+            callback(null)
+        }
+    })
+}
+var resendUpdatePromoSmsStatus = (body, callback) => {
+    let updateBody = {"sms": true};
+    let query = {_id: body.promo._id};
+    Promo.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            callback({
+                "status": 0,
+                "message": "error happen while update promo sms status."
+            })
+        }else{
+            body.promoData = response;
+            callback(null)
+        }
+    })
+}
+var smsResend = (body, callback) => {
+    // checkCustomers to get body.customersData in type SELECTED
+    checkCustomers(body, function(err){
+        if(err !== null){
+            callback(err);
+        }else{
+            reSMS(body, function(err){
+                if(err !== null){
+                    callback(err);
+                }else{
+                    callback(null);
+                }
+            })
+        }
+    })
+}
+var reSMS = (body, callback) => {
+    Store.findOne({'parent': body.parent})
+    .then((store) => {
+        if(!store){
+            let err = {
+                "status": 0,
+                "message": "can't find any store for this user."
+            };
+            return callback(err);
+        }else{
+            body.availableSMS = store.availableSMS;
+            checkSMS(body, function(err){
+                if(err !== null){
+                    callback(err);
+                }else{
+                    sendSMS(body, function(err){
+                        if(err !== null){
+                            callback(err);
+                        }else{
+                            callback(null)
+                        }
+                    })
+                }
+            })
+        }
+    },(e) => {
+        let err = {
+            "status": 0,
+            "message": "error hanppen while query store data."
+        };
+        return callback(err);
+    });
+}
 /* list branches. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('104')){
