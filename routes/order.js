@@ -120,7 +120,6 @@ var checkPromo = (body, callback) => {
                     })
                 }else{
                     body.promoData = promo;
-                    console.log(body);
                     checkPromoDate(body, function(err){
                         if(err !== null){
                             callback(err);
@@ -133,10 +132,14 @@ var checkPromo = (body, callback) => {
                                         if(err !== null){
                                             callback(err);
                                         }else{
-                                            callback({
-                                                "status": 0,
-                                                "message": "promo date/customer/branch ready to go."
-                                            });
+                                            calcPromoDiscount(body, function(err){
+                                                if(err !== null){
+                                                    callback(err);
+                                                }else{
+                                                    console.log(body)
+                                                    callback(null)
+                                                }
+                                            })
                                         }
                                     })
                                 }
@@ -157,6 +160,70 @@ var checkPromo = (body, callback) => {
                     })
                 }
             });
+        }
+    }
+}
+var calcPromoDiscount = (body, callback) => {
+    if(body.promoData.productsType == "ALL"){
+        let billTotal = 0;
+        body.bill.map((product) => {
+            billTotal += product.total;
+        })
+        calcBillDiscount(billTotal, body.promoData, body, function(err){
+            if(err !== null){
+                callback(err);
+            }else{
+                callback(null)
+            }
+        })
+    }else if(body.promoData.productsType == "SELECTED"){
+        console.log("##########")
+        let billTotal = 0;
+        let discountBill = [];
+        body.bill.map((product) => {
+            if(body.promoData.products.includes(product._id)){
+                discountBill.push(product);
+            }
+        })
+        discountBill.map((product) => {
+            billTotal += product.total;
+        })
+        calcBillDiscount(billTotal, body.promoData, body, function(err){
+            if(err !== null){
+                callback(err);
+            }else{
+                callback(null)
+            }
+        })
+    }else{
+        callback({
+            "status": 0,
+            "message": "Wronge productsType in promo data."
+        })
+    }
+}
+var calcBillDiscount = (total, promo, body, callback) => {
+    if(total < promo.limit){
+        callback({
+            "status": 0,
+            "message": "Products total must be more than: (" + promo.limit + "), your bill total is : (" + total + ")."
+        })
+    }else{
+        if(promo.discountType == "VALUE"){
+            body.promo_name = promo.name;
+            body.discountValue = promo.discountValue;
+            body.total = body.subTotal - body.discountValue;
+            callback(null);
+        }else if(promo.discountType == "PERCENTAGE"){
+            body.promo_name = promo.name;
+            body.discountValue = total * (promo.discountValue/100);
+            body.total = body.subTotal - body.discountValue;
+            callback(null);
+        }else{
+            callback({
+                "status": 0,
+                "message": "Wrong discountType value."
+            })
         }
     }
 }
