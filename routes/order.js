@@ -5,6 +5,7 @@ let {Order} = require('../db/models/order');
 let {Branch} = require('../db/models/branch');
 let {Customer} = require('../db/models/customer');
 let {Product} = require('../db/models/product');
+let {Promo} = require('../db/models/promo');
 let {authenticate} = require('../middleware/authenticate');
 
 /* Create new feature. */
@@ -15,7 +16,7 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new order."
         });
     }else{
-        let body = _.pick(req.body, ['customerName','customerPhone','products','promo','promo_id','branch_id']);
+        let body = _.pick(req.body, ['customerName','customerPhone','products','promo','promo_name','branch_id']);
         if(!body.customerName || !body.customerPhone || !body.products || !body.promo || !body.branch_id){
             res.status(400).send({
                 "status": 0,
@@ -35,6 +36,7 @@ router.post('/create', authenticate, function(req, res, next) {
                         if(err !== null){
                             res.status(400).send(err);
                         }else{
+                            body.customer_id = customer._id;
                             productsFormatCheck(body, function(err){
                                 if(err !== null){
                                     res.status(400).send(err);
@@ -59,7 +61,7 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                 "subTotal": body.subTotal,
                                                                 "total": body.total,
                                                                 "promo": body.promo,
-                                                                "promo_id": body.promo_id,
+                                                                "promo_name": body.promo_name,
                                                                 "discountValue": body.discountValue,
                                                                 "createdDate": new Date(),
                                                                 "branch_id": body.branch_id,
@@ -97,16 +99,94 @@ router.post('/create', authenticate, function(req, res, next) {
 var checkPromo = (body, callback) => {
     if(!body.promo){
         //no promo
-        body.promo_id = null;
+        body.promo_name = null;
         body.discountValue = 0;
         body.total = body.subTotal;
         callback(null);
     }else{
         //promo
-        body.promo_id = null;
-        body.discountValue = 0;
-        body.total = body.subTotal;
+        if(!body.promo_name){
+            callback({
+                "status": 0,
+                "message": "(promo_name) is required while (promo) is true."
+            });
+        }else{
+            Promo.findOne({name: body.promo_name, parent: body.parent})
+            .then((promo) => {
+                if(!promo){
+                    callback({
+                        "status": 0,
+                        "message": "wrong promo_name."
+                    })
+                }else{
+                    body.promoData = promo;
+                    console.log(body);
+                    checkPromoDate(body, function(err){
+                        if(err !== null){
+                            callback(err);
+                        }else{
+                            checkPromoCustomer(body, function(err){
+                                if(err !== null){
+                                    callback(err);
+                                }else{
+                                    callback({
+                                        "status": 0,
+                                        "message": "promo date/customer ready to go."
+                                    });
+                                }
+                            })
+                        }
+                    })
+                }
+            },(e) => {
+                if(e.name && e.name == 'CastError'){
+                    callback({
+                        "status": 0,
+                        "message": "wrong promo_name."
+                    })
+                }else{
+                    callback({
+                        "status": 0,
+                        "message": "error happen while query promo data."
+                    })
+                }
+            });
+        }
+    }
+}
+var checkPromoDate = (body, callback) => {
+    let current = new Date();
+    if(new Date(body.promoData.startDate).getTime() > current.getTime()){
+        callback({
+            "status": 0,
+            "message": "promo will be valid at: " + body.promoData.startDate
+        })
+    }else if(new Date(body.promoData.endDate).getTime() < current.getTime()){
+        callback({
+            "status": 0,
+            "message": "promo expired at: " + body.promoData.endDate
+        })
+    }else{
         callback(null);
+    }
+}
+var checkPromoCustomer = (body, callback) => {
+    if(body.promoData.customerType == "ALL"){
+        callback(null)
+    }else if(body.promoData.customerType == "SELECTED"){
+        if(body.promoData.customers.includes(body.customer_id)){
+            callback(null)
+        }else{
+            callback({
+                "status": 0,
+                "message": "Promo: (" + body.promoData.name + ") is not valid for this customer."
+            })
+        }
+    }else{
+        callback({
+            "status": 0,
+            "message": "Wronge customerType in promo data."
+        })
     }
 }
 var checkProductsAvailability = (body, callback) => {
