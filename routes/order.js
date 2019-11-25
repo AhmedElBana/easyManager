@@ -129,10 +129,16 @@ var checkPromo = (body, callback) => {
                                 if(err !== null){
                                     callback(err);
                                 }else{
-                                    callback({
-                                        "status": 0,
-                                        "message": "promo date/customer ready to go."
-                                    });
+                                    checkPromoBranch(body, function(err){
+                                        if(err !== null){
+                                            callback(err);
+                                        }else{
+                                            callback({
+                                                "status": 0,
+                                                "message": "promo date/customer/branch ready to go."
+                                            });
+                                        }
+                                    })
                                 }
                             })
                         }
@@ -186,6 +192,25 @@ var checkPromoCustomer = (body, callback) => {
         callback({
             "status": 0,
             "message": "Wronge customerType in promo data."
+        })
+    }
+}
+var checkPromoBranch = (body, callback) => {
+    if(body.promoData.branchesType == "ALL"){
+        callback(null)
+    }else if(body.promoData.branchesType == "SELECTED"){
+        if(body.promoData.branches.includes(body.branch_id)){
+            callback(null)
+        }else{
+            callback({
+                "status": 0,
+                "message": "Promo: (" + body.promoData.name + ") is not valid in this branch."
+            })
+        }
+    }else{
+        callback({
+            "status": 0,
+            "message": "Wronge branchesType in promo data."
         })
     }
 }
