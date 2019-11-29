@@ -16,7 +16,6 @@ let StoreSchema = new mongoose.Schema({
 		//en/ar
 		type: String,
 		trim: true,
-		unique: true,
 		required: true
 	},
 	phoneNumber: {
