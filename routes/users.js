@@ -73,7 +73,7 @@ User.findOneAndUpdate(query,newData, { new: true })
     });
 });
 /* generate new otp to change password. */
-router.post('/forgotpassword', authenticate, function(req, res, next) {
+router.post('/forgotpassword', function(req, res, next) {
     let body = _.pick(req.body, ['email']);
     if(body.email){
         User.find({email: body.email}).then(
