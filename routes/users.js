@@ -27,20 +27,20 @@ router.post('/login', function(req, res, next) {
                               "data": {"userData": response, "token": token}
                           });
                       }else{
-                          res.status(400).send({
+                          res.status(401).send({
                               "status": 0,
                               "message": "Invalid user data."
                           });
                       }
                   })
                   .catch(err => {
-                      res.status(400).send({
+                      res.status(401).send({
                           "status": 0,
                           "message": "error while query user data."
                       });
                   });
           }).catch((e) => {
-              res.status(400).send({
+              res.status(401).send({
                   "status": 0,
                   "message": "email or password is not correct."
               });
