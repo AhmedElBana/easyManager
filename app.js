@@ -17,10 +17,12 @@ var promoRouter = require('./routes/promo')
 
 var app = express();
 
-app.use(logger('dev'));
+// console logs for each request
+// app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
 let {mongoose} = require('./db/mongoose');
 //enable CORS
 app.use(function(req, res, next) {

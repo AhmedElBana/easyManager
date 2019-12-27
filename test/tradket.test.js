@@ -19,9 +19,9 @@ let newUser = {
 global.token = "";
 describe('Tradket Test', () => {
 	describe('User Model', () => {
-		after(function() {
-			console.log("x-auth token: " + token)	 
-		})
+		// after(function() {
+		// 	console.log("x-auth token: " + token)	 
+		// })
 		SignUpTest(newUser);
 		SignInTest(newUser);
 	})
@@ -52,7 +52,6 @@ describe('Tradket Test', () => {
 // 	"type": "admin"
 // };
 // const createUser = async () => {
-// 	console.log("###############################################")
 //     const UserModel = new User(defaultUser);
 //     await UserModel.save();
 // };

@@ -22,7 +22,6 @@ const SignInTest = (newUser) => {
                 "email": newUser.email,
                 "password": newUser.password.toString()
             }
-            console.log(newUser)
             request(server)
               .post('/api/users/login')
               .send(userLogin)

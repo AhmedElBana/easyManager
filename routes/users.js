@@ -18,7 +18,7 @@ router.post('/login', function(req, res, next) {
           User.findByCredentials(body.email, body.password).then((user) => {
               let query = {_id: user._id};
               let newData = {"is_login": true}
-              User.findOneAndUpdate(query,newData, { new: true })
+              User.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
                   .then(response => {
                       if(response){
                           let token = user.generateAuthToken();
