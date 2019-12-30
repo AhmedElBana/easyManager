@@ -179,7 +179,7 @@ const StaffTest = () => {
             "branches": "11,5da762fbd79c93148fc1aae4",
             "password": currentDateNumer4
         }
-        it('Creat Staff (Duplicate email)', (done) => {
+        it('Creat Staff (Duplicate phoneNumber)', (done) => {
             request(server)
                 .post('/api/staff/create')
                 .send(newStaff5)
