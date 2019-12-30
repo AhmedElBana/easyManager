@@ -4,8 +4,10 @@ var server = require("./../bin/www").server;
 
 var SignUpTest = require('./signup.js').SignUpTest;
 var SignInTest = require('./signin.js').SignInTest;
+var StaffTest = require('./staff').StaffTest;
 
-let currentDateNumer = new Date().getTime();
+global.token = "";
+global.currentDateNumer = new Date().getTime();
 let newUser = {
 	"name": "test " + currentDateNumer,
 	"email": "test"  + currentDateNumer + "@test.com",
@@ -16,7 +18,7 @@ let newUser = {
 	"storePhoneNumber": currentDateNumer
 }
 
-global.token = "";
+
 describe('Tradket Test', () => {
 	describe('User Model', () => {
 		// after(function() {
@@ -24,6 +26,7 @@ describe('Tradket Test', () => {
 		// })
 		SignUpTest(newUser);
 		SignInTest(newUser);
+		StaffTest();
 	})
 })
 
