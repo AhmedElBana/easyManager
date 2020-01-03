@@ -189,7 +189,7 @@ router.post('/edit', authenticate, function(req, res, next) {
                         }else if(req.user.type == 'staff'){
                             query = {_id: body.user_id, parent: req.user.parent};
                         }
-                        User.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                        User.findOneAndUpdate(query,updateBody, { new: true, useFindAndModify: false}, (e, response) => {
                             if(e){
                                 if(e.errmsg && e.errmsg.includes("email")){
                                     res.status(400).send({
@@ -240,7 +240,7 @@ router.post('/edit', authenticate, function(req, res, next) {
                 }else if(req.user.type == 'staff'){
                     query = {_id: body.user_id, parent: req.user.parent};
                 }
-                User.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                User.findOneAndUpdate(query,updateBody, { new: true, useFindAndModify: false}, (e, response) => {
                     if(e){
                         if(e.errmsg && e.errmsg.includes("email")){
                             res.status(400).send({
