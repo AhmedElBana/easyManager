@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "test": "mocha  **/*.test.js",
-    "test-watch": "nodemon --exec 'npm test'"
+    "test": "mocha  ./test/tradket.test.js",
+    "test-watch": "nodemon --exec \"npm test\""
   },
   "dependencies": {
     "axios": "^0.19.0",
@@ -21,6 +21,7 @@
     "morgan": "~1.9.1",
     "multer": "^1.4.1",
     "nodemailer": "^6.2.1",
+    "tap": "^14.10.5",
     "validator": "^11.0.0"
   },
   "devDependencies": {
