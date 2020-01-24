@@ -6,6 +6,10 @@ const _ = require('lodash');
 const bcrypt = require('bcryptjs');
 
 let ProductGroupSchema = new mongoose.Schema({
+	_id: {
+		type: String,
+		trim: true
+	},
 	name: {
 		type: String,
 		required: true,
@@ -60,6 +64,8 @@ ProductGroupSchema.methods.toJSON = function(){
 	let ProductGroupObject = ProductGroup.toObject();
 	return _.pick(ProductGroupObject, ['_id','name','category_id','subCategory_id','description','features','images','rate','createdAt','parent','active']);
 }
+
+ProductGroupSchema.index({ _id: 1, parent: 1 }, { unique: true });
 
 ProductGroupSchema.plugin(mongoosePaginate);
 let ProductGroup = mongoose.model('ProductGroup', ProductGroupSchema);

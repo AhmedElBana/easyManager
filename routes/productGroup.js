@@ -10,6 +10,8 @@ let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
 
+var mongo = require('mongodb');
+var ObjectID = mongo.ObjectID;
 
 var mongo = require('mongodb'),
     ObjectID = mongo.ObjectID;
@@ -54,7 +56,7 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
             "message": "This user does not have perrmission to create new product."
         });
     }else{
-        let body = _.pick(req.body, ['name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
+        let body = _.pick(req.body, ['_id','name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
         
         let images = [];
         body.images_size = 0;
@@ -206,7 +208,7 @@ var calcStorage = (res,body) => {
     Store.findOneAndUpdate(
         storeQuery,
         {$inc : {'imagesStorage' : body.images_size}}, 
-        { new: true }, 
+        { new: true, useFindAndModify:false }, 
         (e, response) => {
         if(e){
             console.log(e)
@@ -275,11 +277,17 @@ var createProductGroup = (res,body) => {
         "active": true,
         "rate": 0
     }
+    if(body._id){
+        newProductGroup["_id"] = body._id
+    }else{
+        newProductGroup["_id"] = new Date().getTime();
+    }
     if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
     let newProductGroupData = new ProductGroup(newProductGroup);
     newProductGroupData.save().then((newProductGroup) => {
         if(body.productMap && body.productMap.length >= 1){
             let finalProductsArr = [];
+            let customerNewIds = [];
             body.productMap.map((product)=>{
                 let mapObj = {};
                 mapObj[body.branch_id] = product.quantity;
@@ -297,13 +305,26 @@ var createProductGroup = (res,body) => {
                     "parent": body.parent,
                     "active": true
                 }
+                if(product._id){
+                    finalProduct["_id"] = product._id;
+                    customerNewIds.push(product._id);
+                }else{
+                    finalProduct["_id"] = new Date().getTime();
+                }
                 finalProductsArr.push(finalProduct);
             })
-            createManyProducts(res, finalProductsArr);
+            check_products_id(body.parent,customerNewIds,function(err){
+                if(err !== null){
+                    res.status(400).send(err);
+                }else{
+                    createManyProducts(res, finalProductsArr);
+                }
+            })
         }else{
             let mapObj = {};
             mapObj[body.branch_id] = body.quantity;
             let finalProduct = {
+                "_id": newProductGroup._id,
                 "group_id": newProductGroup._id,
                 "name": body.name,
                 "price": body.price,
@@ -312,10 +333,15 @@ var createProductGroup = (res,body) => {
                 "parent": body.parent,
                 "active": true
             }
-            createProduct(res, finalProduct);
+            check_products_id(body.parent,[newProductGroup._id],function(err){
+                if(err !== null){
+                    res.status(400).send(err);
+                }else{
+                    createProduct(res, finalProduct);
+                }
+            })
         }
     }).catch((e) => {
-        console.log(e)
         if(e.code){
             if(e.code == 11000){
                 res.status(400).send({
@@ -334,6 +360,26 @@ var createProductGroup = (res,body) => {
                 "message": e
             });
         }
+    });
+}
+var check_products_id = (parent, ids, callback) => {
+    Product.find({parent: parent, _id: { $in:  ids} })
+    .then((products) => {
+        if(products.length == 0){
+            return callback(null);
+        }else{
+            usedIds = [];
+            products.map((product)=>{
+                usedIds.push(product._id)
+            })
+            let err = {
+                "status": 0,
+                "message": "this product IDs is used before : (" + usedIds.join() + ")."
+            }
+            return callback(err);
+        }
+    },(e) => {
+        return callback(null);
     });
 }
 var createProduct = (res, product) => {
@@ -462,7 +508,7 @@ var editProductGroup = (res, body) =>{
 
     let query;
     query = {_id: body.productGroup_id, parent: body.parent};
-    ProductGroup.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+    ProductGroup.findOneAndUpdate(query,updateBody, { new: true, useFindAndModify:false }, (e, response) => {
         if(e){
             if(e.name && e.name == "CastError"){
                 res.status(400).send({
@@ -533,7 +579,7 @@ var editCalcStorage = (res,body) => {
         Store.findOneAndUpdate(
             storeQuery,
             {$inc : {'imagesStorage' : body.images_size}}, 
-            { new: true }, 
+            { new: true, useFindAndModify:false }, 
             (e, response) => {
             if(e){
                 if(e.name && e.name == "CastError"){
@@ -574,7 +620,7 @@ var saveImagesToGroup = (res,body) => {
                 ProductGroup.findOneAndUpdate(
                     query,
                     {'images': fullImagesArr}, 
-                    { new: true }, 
+                    { new: true, useFindAndModify:false }, 
                     (e, response) => {
                     if(e){
                         console.log(e)
@@ -654,7 +700,7 @@ router.post('/edit/removeImages', authenticate, function(req, res, next) {
                                 Store.findOneAndUpdate(
                                     storeQuery,
                                     {$inc : {'imagesStorage' : -removedSize}}, 
-                                    { new: true }, 
+                                    { new: true, useFindAndModify:false }, 
                                     (e, response) => {
                                     if(e){
                                         console.log(e)
@@ -674,7 +720,7 @@ router.post('/edit/removeImages', authenticate, function(req, res, next) {
                                         ProductGroup.findOneAndUpdate(
                                             query,
                                             {'images': newImagesArr}, 
-                                            { new: true }, 
+                                            { new: true, useFindAndModify:false }, 
                                             (e, response) => {
                                             if(e){
                                                 console.log(e)

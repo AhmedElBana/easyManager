@@ -6,6 +6,10 @@ const _ = require('lodash');
 const bcrypt = require('bcryptjs');
 
 let ProductSchema = new mongoose.Schema({
+	_id: {
+		type: String,
+		trim: true
+	},
 	group_id: {
 		type: String,
 		required: true,
@@ -52,6 +56,8 @@ ProductSchema.methods.toJSON = function(){
 	let ProductObject = Product.toObject();
 	return _.pick(ProductObject, ['_id','name','group_id','price','quantity','features','images','map','parent','active']);
 }
+
+ProductSchema.index({ _id: 1, parent: 1 }, { unique: true });
 
 ProductSchema.plugin(mongoosePaginate);
 let Product = mongoose.model('Product', ProductSchema);
