@@ -97,7 +97,7 @@ router.post('/create', authenticate, function(req, res, next) {
     }
 });
 var checkPromo = (body, callback) => {
-    if(!body.promo){
+    if(body.promo == "false"){
         //no promo
         body.promo_name = null;
         body.discountValue = 0;
