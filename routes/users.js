@@ -21,11 +21,35 @@ router.post('/login', function(req, res, next) {
               User.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
                   .then(response => {
                       if(response){
-                          let token = user.generateAuthToken();
-                          return res.header('x-auth', token).send({
-                              "status": 1,
-                              "data": {"userData": response, "token": token}
-                          });
+                        let token = user.generateAuthToken();
+                        if(user.type == 'admin'){
+                            body.parent = user._id;
+                        }else if(user.type == 'staff'){
+                            body.parent = user.parent;
+                        }
+                        Store.findOne({parent: body.parent})
+                        .then((store) => {
+                            if(!store){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "you don't have any store with this parent."
+                                });
+                            }else{
+                                return res.header('x-auth', token).send({
+                                    "status": 1,
+                                    "data": {
+                                        "userData": response, 
+                                        "store": store,
+                                        "token": token
+                                    }
+                                });
+                            }
+                        },(e) => {
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "you don't have any store with this parent."
+                            });
+                        });
                       }else{
                           res.status(401).send({
                               "status": 0,
@@ -34,6 +58,7 @@ router.post('/login', function(req, res, next) {
                       }
                   })
                   .catch(err => {
+                      console.log(err)
                       res.status(401).send({
                           "status": 0,
                           "message": "error while query user data."
@@ -250,6 +275,8 @@ router.post('/admin/create', function(req, res, next) {
                 "usedEmails": 0,
                 "availableSMS": 0,
                 "usedSMS": 0,
+                "returnOrederAllowed": true,
+                "returnOrederDays": 14,
                 "parent": newUser._id
             }
             let newStoreData = new Store(storeObj);

@@ -56,6 +56,8 @@ router.post('/create', authenticate, function(req, res, next) {
                                                             //create the order
                                                             let orderObj = {
                                                                 "customer_id": customer._id,
+                                                                "customer_name": customer.name,
+                                                                "customer_phoneNumber": customer.phoneNumber,
                                                                 "products": body.products,
                                                                 "bill": body.bill,
                                                                 "subTotal": body.subTotal,
@@ -73,7 +75,9 @@ router.post('/create', authenticate, function(req, res, next) {
                                                             newOrderData.save().then((newOrder) => {                
                                                                 return res.status(201).send({
                                                                     "status": 1,
-                                                                    "data": {"orderData": newOrder}
+                                                                    "data": {
+                                                                        "orderData": newOrder
+                                                                    }
                                                                 });
                                                             }).catch((e) => {
                                                                 res.status(400).send({
