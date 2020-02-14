@@ -287,7 +287,7 @@ var createProductGroup = (res,body) => {
             let customerNewIds = [];
             body.productMap.map((product)=>{
                 let mapObj = {};
-                mapObj[body.branch_id] = product.quantity;
+                mapObj[body.branch_id] = Number(product.quantity);
                 let name = body.name;
                 Object.keys(product.features).map(function(key, index) {
                         name += "-" + product.features[key]
@@ -319,7 +319,7 @@ var createProductGroup = (res,body) => {
             })
         }else{
             let mapObj = {};
-            mapObj[body.branch_id] = body.quantity;
+            mapObj[body.branch_id] = Number(body.quantity);
             let finalProduct = {
                 "_id": newProductGroup._id,
                 "group_id": newProductGroup._id,
