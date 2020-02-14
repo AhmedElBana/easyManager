@@ -6,10 +6,10 @@ const _ = require('lodash');
 const bcrypt = require('bcryptjs');
 
 let ProductSchema = new mongoose.Schema({
-	// _id: {
-	// 	type: String,
-	// 	trim: true
-	// },
+	_id: {
+		type: String,
+		trim: true
+	},
 	group_id: {
 		type: String,
 		required: true,

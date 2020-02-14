@@ -10,9 +10,6 @@ let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
 
-var mongo = require('mongodb');
-var ObjectID = mongo.ObjectID;
-
 var mongo = require('mongodb'),
     ObjectID = mongo.ObjectID;
 
@@ -279,10 +276,9 @@ var createProductGroup = (res,body) => {
     }
     if(body._id){
         newProductGroup["_id"] = body._id
+    }else{
+        newProductGroup["_id"] = new ObjectID().toString();
     }
-    // else{
-    //     newProductGroup["_id"] = new Date().getTime();
-    // }
     if(body.subCategory_id){newProductGroup["subCategory_id"] = body.subCategory_id}
     let newProductGroupData = new ProductGroup(newProductGroup);
     newProductGroupData.save().then((newProductGroup) => {
@@ -309,10 +305,9 @@ var createProductGroup = (res,body) => {
                 if(product._id){
                     finalProduct["_id"] = product._id;
                     customerNewIds.push(product._id);
+                }else{
+                    finalProduct["_id"] = new ObjectID().toString();
                 }
-                // else{
-                //     finalProduct["_id"] = new Date().getTime();
-                // }
                 finalProductsArr.push(finalProduct);
             })
             check_products_id(body.parent,customerNewIds,function(err){
