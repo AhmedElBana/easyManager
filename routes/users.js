@@ -277,6 +277,7 @@ router.post('/admin/create', function(req, res, next) {
                 "usedSMS": 0,
                 "returnOrederAllowed": true,
                 "returnOrederDays": 14,
+                "returnAnyBranch": true,
                 "parent": newUser._id
             }
             let newStoreData = new Store(storeObj);

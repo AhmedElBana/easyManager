@@ -6,6 +6,7 @@ const _ = require('lodash');
 const bcrypt = require('bcryptjs');
 
 let OrderSchema = new mongoose.Schema({
+	type: { type: String, trim: true, required: true, enum: ['Order','Return']},
 	customer_id: { type: String, required: true, minlenght: 2, trim: true },
 	customer_name: {type: String,required: true,minlenght: 2,trim: true},
 	customer_phoneNumber: {type: String,trim: true,required: true},
@@ -21,13 +22,20 @@ let OrderSchema = new mongoose.Schema({
 	creator_id: { type: String, trim: true, required: true },
 	canceled: { type: Boolean, required: true },
 	canceledDate: { type: Date, trim: true },
+	returned: { type: Boolean, required: true },
+	returnedDate: { type: Date, trim: true },
+	parentOrder: { type: String, trim: true },
+	prevOrderSubTotal: { type: Number , min: 0},
+	prevOrderDiscountValue: { type: Number , min: 0},
+	prevOrderTotal: { type: Number , min: 0},
+	returnAmount: { type: Number , min: 0},
 	parent: { type: String, trim: true, required: true },
 });
 
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','customer_id','customer_name','customer_phoneNumber','products','bill','subTotal','total','promo','promo_id','discountValue','createdDate','branch_id','creator_id','canceled','canceledDate','parent']);
+	return _.pick(OrderObject, ['_id','type','customer_id','customer_name','customer_phoneNumber','products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','total','returnAmount','promo','promo_id','discountValue','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','parent']);
 }
 
 OrderSchema.plugin(mongoosePaginate);

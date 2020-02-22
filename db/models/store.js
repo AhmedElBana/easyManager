@@ -63,6 +63,10 @@ let StoreSchema = new mongoose.Schema({
 		min: 0,
 		required: true
 	},
+	returnAnyBranch: {
+		type: Boolean, 
+		required: true
+	},
 	parent: {
 		type: String,
 		trim: true,
@@ -73,7 +77,7 @@ let StoreSchema = new mongoose.Schema({
 StoreSchema.methods.toJSON = function(){
 	let Store = this;
 	let StoreObject = Store.toObject();
-	return _.pick(StoreObject, ['_id','name','language','phoneNumber','imagesStorageLimit','imagesStorage','availableEmails','usedEmails','availableSMS','usedSMS','returnOrederAllowed','returnOrederDays','parent']);
+	return _.pick(StoreObject, ['_id','name','language','phoneNumber','imagesStorageLimit','imagesStorage','availableEmails','usedEmails','availableSMS','usedSMS','returnOrederAllowed','returnOrederDays','returnAnyBranch','parent']);
 }
 
 StoreSchema.plugin(mongoosePaginate);

@@ -6,6 +6,7 @@ let {Branch} = require('../db/models/branch');
 let {Customer} = require('../db/models/customer');
 let {Product} = require('../db/models/product');
 let {Promo} = require('../db/models/promo');
+let {Store} = require('../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
 
 /* Create new feature. */
@@ -55,6 +56,7 @@ router.post('/create', authenticate, function(req, res, next) {
                                                         }else{
                                                             //create the order
                                                             let orderObj = {
+                                                                "type": "Order",
                                                                 "customer_id": customer._id,
                                                                 "customer_name": customer.name,
                                                                 "customer_phoneNumber": customer.phoneNumber,
@@ -63,13 +65,16 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                 "subTotal": body.subTotal,
                                                                 "total": body.total,
                                                                 "promo": body.promo,
-                                                                "promo_name": body.promo_name,
                                                                 "discountValue": body.discountValue,
                                                                 "createdDate": new Date(),
                                                                 "branch_id": body.branch_id,
                                                                 "creator_id": req.user._id,
                                                                 "canceled": false,
+                                                                "returned": false,
                                                                 "parent": body.parent
+                                                            }
+                                                            if(body.promoData){
+                                                                orderObj.promo_id = body.promoData._id;
                                                             }
                                                             let newOrderData = new Order(orderObj);
                                                             newOrderData.save().then((newOrder) => {                
@@ -625,7 +630,411 @@ router.post('/cancel', authenticate, function(req, res, next) {
         }
     }
 });
+/* return order. */
+router.post('/return', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('126')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to return order."
+        });
+    }else{
+        let body = _.pick(req.body, ['order_id','branch_id','newProducts','removedProducts']);
+        if(!body.order_id || !body.branch_id || !body.newProducts || !body.removedProducts){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (order_id, branch_id, newProducts, removedProducts) field is required."
+            });
+        }else{
+            let user = req.user;
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            let query = {
+                _id: body.order_id, 
+                parent: body.parent
+            };
+            Order.findOne(query)
+            .then((order) => {
+                if(!order){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any order with this order_id."
+                    });
+                }else{
+                    if(order.canceled){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "This order can't be return because it canceled before."
+                        });
+                    }else if(order.returned){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "This order can't be return because it returned before."
+                        });
+                    }else{
+                        checkStoreConditions(body, order, function(err, store){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                checkBranch(req, body, function(err){
+                                    if(err !== null){
+                                        res.status(400).send(err);
+                                    }else{
+                                        productsCheckFormat(body.removedProducts, function(err){
+                                            if(err !== null){
+                                                res.status(400).send(err);
+                                            }else{
+                                                productsCheckFormat(body.newProducts, function(err){
+                                                    if(err !== null){
+                                                        res.status(400).send(err);
+                                                    }else{
+                                                        checkNewProductsAvailability(body, body.newProducts, function(err){
+                                                            if(err !== null){
+                                                                res.status(400).send(err);
+                                                            }else{
+                                                                checkRemovedProducts(body.removedProducts, order.products, function(err, remainderProducts){
+                                                                    if(err !== null){
+                                                                        res.status(400).send(err);
+                                                                    }else{
+                                                                        body.remainderProducts = remainderProducts;
+                                                                        remainderProductsBill(body, remainderProducts, function(err, remainderProducts){
+                                                                            if(err !== null){
+                                                                                res.status(400).send(err);
+                                                                            }else{
+                                                                                removeNewProducts(body, function(err){
+                                                                                    if(err !== null){
+                                                                                        res.status(400).send(err);
+                                                                                    }else{
+                                                                                        addProducts(body.removedProducts, body.parent, body.branch_id, function(err){
+                                                                                            if(err !== null){
+                                                                                                res.status(400).send(err);
+                                                                                            }else{
+                                                                                                //create the order
+                                                                                                let total,returnAmount;
+                                                                                                if(order.total - (body.remainderProductsSubTotal + body.newProductsSubTotal) < 0){
+                                                                                                    total = Math.abs(order.total - (body.remainderProductsSubTotal + body.newProductsSubTotal));
+                                                                                                    returnAmount = 0;
+                                                                                                }else{
+                                                                                                    total = 0;
+                                                                                                    returnAmount = Math.abs(order.total - (body.remainderProductsSubTotal + body.newProductsSubTotal));
+                                                                                                }
+                                                                                                let orderObj = {
+                                                                                                    "type": "Return",
+                                                                                                    "customer_id": order.customer_id,
+                                                                                                    "customer_name": order.customer_name,
+                                                                                                    "customer_phoneNumber": order.customer_phoneNumber,
+                                                                                                    "products": [...body.remainderProducts,...body.newProducts],
+                                                                                                    "bill": [...body.remainderProductsBill,...body.newProductsBill],
+                                                                                                    "prevOrderSubTotal": order.subTotal,
+                                                                                                    "prevOrderDiscountValue": order.discountValue,
+                                                                                                    "prevOrderTotal": order.total,
+                                                                                                    "subTotal": body.remainderProductsSubTotal + body.newProductsSubTotal,
+                                                                                                    "total": total,
+                                                                                                    "returnAmount": returnAmount,
+                                                                                                    "promo": false,
+                                                                                                    "discountValue": 0,
+                                                                                                    "createdDate": new Date(),
+                                                                                                    "branch_id": body.branch_id,
+                                                                                                    "creator_id": req.user._id,
+                                                                                                    "canceled": false,
+                                                                                                    "returned": false,
+                                                                                                    "parentOrder": order._id,
+                                                                                                    "parent": body.parent
+                                                                                                }
+                                                                                                let newOrderData = new Order(orderObj);
+                                                                                                newOrderData.save().then((newOrder) => {                
+                                                                                                    return res.status(201).send({
+                                                                                                        "status": 1,
+                                                                                                        "data": {
+                                                                                                            "orderData": newOrder
+                                                                                                        }
+                                                                                                    });
+                                                                                                }).catch((e) => {
+                                                                                                    res.status(400).send({
+                                                                                                        "status": 0,
+                                                                                                        "message": e
+                                                                                                    });
+                                                                                                });
+                                                                                            }
+                                                                                        })
+                                                                                    }
+                                                                                })
+                                                                            }
+                                                                        })
+                                                                    }
+                                                                })
+                                                            }
+                                                        })
+                                                    }
+                                                })
+                                            }
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                        
+                    }
+                }
+            },(e) => {
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Wrong order_id value."
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error happen while query order data."
+                    });
+                }
+            });
+        }
+    }
+});
+var checkStoreConditions = (body, order, callback) => {
+    Store.findOne({parent: body.parent})
+    .then((store) => {
+        if(!store){
+            callback({
+                "status": 0,
+                "message": "can't find any store ."
+            }, null)
+        }else{
+            if(!store.returnOrederAllowed){
+                callback({
+                    "status": 0,
+                    "message": store.name + " does not allow order return."
+                }, null)
+            }else{
+                let diffTime = Math.abs(new Date() - order.createdDate);
+                let diffHours = diffTime / (1000 * 60 * 60);
+                if(diffHours > (Number(store.returnOrederDays) * 24)){
+                    callback({
+                        "status": 0,
+                        "message": "order can't be return after (" + store.returnOrederDays + ") Day."
+                    }, null)
+                }else{
+                    if(!store.returnAnyBranch){
+                        if(order.branch_id != body.branch_id){
+                            callback({
+                                "status": 0,
+                                "data": {"branch_id": order.branch_id},
+                                "message": "Order return must be from the source branch (" + order.branch_id + ")"
+                            }, null)
+                        }else{
+                            callback(null, store)
+                        }
+                    }else{
+                        callback(null, store)
+                    }
+                }
+            }
+        }
+    },(e) => {
+        callback({
+            "status": 0,
+            "message": "error happen while query store data."
+        }, null)
+    });
+}
+var productsCheckFormat = (products, callback) => {
+    let fountError = false;
+    if(typeof(products[0]) !== 'object'){
+        if(!(typeof(products) === 'object' && products.length === 0)){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (products) must be array of objects."
+            }
+            return callback(err);
+        }
+    }else{
+        products.map((product)=>{
+            if(!product.product_id){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (product_id) field."
+                }
+                return callback(err);
+            }
+            if(!product.quantity || isNaN(product.quantity)){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside products must have (quantity) field with numeric value."
+                }
+                return callback(err);
+            }
+        })
+    }
+    if(!fountError){return callback(null);}
+}
+var checkNewProductsAvailability = (body, newProducts, callback) => {
+    let fountError = false;
+    let productsArr = [];
+    let productsQuantityMap = {};
+    let finalProductsQuantityMap = {};
+    newProducts.map((product)=>{
+        productsArr.push(product.product_id)
+        productsQuantityMap[product.product_id] = product.quantity;
+    })
+    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+        .then((products) => {
+            if(products.length !== productsArr.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                products.map((singleProduct) => {
+                    if(!singleProduct.map[body.branch_id] || singleProduct.map[body.branch_id] < productsQuantityMap[singleProduct._id.toString()]){
+                        fountError = true;
+                        let err = {
+                            "status": 0,
+                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
+                        };
+                        return callback(err)
+                    }
+                })
+                let bill = [];
+                let totalPrice = 0;
+                products.map((singleProduct) => {
+                    var newMapObj = {...singleProduct.map};
+                    newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj
+                    bill.push({
+                        "_id": singleProduct._id,
+                        "name": singleProduct.name,
+                        "quantity": productsQuantityMap[singleProduct._id.toString()],
+                        "price": singleProduct.price,
+                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
+                    })
+                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
+                })
+                body.newProductsBill = bill;
+                body.newProductsSubTotal = totalPrice;
+                body.newProductsFinalQuantityMap = finalProductsQuantityMap;
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
 
+}
+var checkRemovedProducts = (removedProducts, orderProducts, callback) => {
+    let fountError = false;
+    let remainderProducts = [];
+    let orderProductsMap = {};
+    orderProducts.map((product)=>{
+        orderProductsMap[product.product_id] = product.quantity;
+    })
+    removedProducts.map((removedProduct)=>{
+        if(!orderProductsMap[removedProduct.product_id]){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Returned product (" + removedProduct.product_id + ") not found in order."
+            }
+            return callback(err);
+        }else{
+            if(orderProductsMap[removedProduct.product_id] < removedProduct.quantity){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Returned quantity of product (" + removedProduct.product_id + ") is more than quantity in the order."
+                }
+                return callback(err);
+            }else{
+                orderProductsMap[removedProduct.product_id] -= removedProduct.quantity;
+            }
+        }
+    })
+    Object.keys(orderProductsMap).map((key)=>{
+        if(orderProductsMap[key] != 0){
+            remainderProducts.push({"product_id": key, "quantity": orderProductsMap[key]})
+        }
+    })
+    if(!fountError){return callback(null,remainderProducts);}
+}
+var remainderProductsBill = (body, newProducts, callback) => {
+    let fountError = false;
+    let productsArr = [];
+    let productsQuantityMap = {};
+    newProducts.map((product)=>{
+        productsArr.push(product.product_id)
+        productsQuantityMap[product.product_id] = product.quantity;
+    })
+    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+        .then((products) => {
+            if(products.length !== productsArr.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                let bill = [];
+                let totalPrice = 0;
+                products.map((singleProduct) => {
+                    var newMapObj = {...singleProduct.map};
+                    newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
+                    bill.push({
+                        "_id": singleProduct._id,
+                        "name": singleProduct.name,
+                        "quantity": productsQuantityMap[singleProduct._id.toString()],
+                        "price": singleProduct.price,
+                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
+                    })
+                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
+                })
+                body.remainderProductsBill = bill;
+                body.remainderProductsSubTotal = totalPrice;
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
+
+}
+async function removeNewProducts(body, callback) {
+    Object.keys(body.newProductsFinalQuantityMap).map((product_id)=>{
+        updateOneProduct(product_id,body.newProductsFinalQuantityMap[product_id]);
+    })
+    callback(null);
+}
 /* list orders. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('123')){
