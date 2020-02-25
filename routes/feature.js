@@ -81,7 +81,7 @@ router.post('/edit', authenticate, function(req, res, next) {
             let user = req.user;
             let updateBody = {};
             if(req.body.name){updateBody.name = req.body.name}
-            if(req.body.options){updateBody.options = req.body.options}
+            if(req.body.options){updateBody.options = req.body.options.split(",")}
             if(req.body.active){updateBody.active = req.body.active}
 
             let query;
