@@ -62,10 +62,10 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                 "customer_phoneNumber": customer.phoneNumber,
                                                                 "products": body.products,
                                                                 "bill": body.bill,
-                                                                "subTotal": body.subTotal,
-                                                                "total": body.total,
+                                                                "subTotal": body.subTotal.toFixed(2),
+                                                                "total": body.total.toFixed(2),
                                                                 "promo": body.promo,
-                                                                "discountValue": body.discountValue,
+                                                                "discountValue": body.discountValue.toFixed(2),
                                                                 "createdDate": new Date(),
                                                                 "branch_id": body.branch_id,
                                                                 "creator_id": req.user._id,
@@ -731,10 +731,10 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                                             "prevOrderSubTotal": order.subTotal,
                                                                                                             "prevOrderDiscountValue": order.discountValue,
                                                                                                             "prevOrderTotal": order.total,
-                                                                                                            "subTotal": body.subTotal,
-                                                                                                            "total": body.total,
-                                                                                                            "returnAmount": body.returnAmount,
-                                                                                                            "discountValue": body.discountValue,
+                                                                                                            "subTotal": body.subTotal.toFixed(2),
+                                                                                                            "total": body.total.toFixed(2),
+                                                                                                            "returnAmount": body.returnAmount.toFixed(2),
+                                                                                                            "discountValue": body.discountValue.toFixed(2),
                                                                                                             "promo": body.promo,
                                                                                                             "createdDate": new Date(),
                                                                                                             "branch_id": body.branch_id,
@@ -1267,7 +1267,7 @@ router.get('/list', authenticate, function(req, res, next) {
         const options = {
             page: page,
             limit: page_size,
-            sort: { createdAt: -1 },
+            sort: { createdDate: -1 },
             collation: {
             locale: 'en'
             }
