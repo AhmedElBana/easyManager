@@ -570,6 +570,11 @@ router.post('/cancel', authenticate, function(req, res, next) {
                                 "status": 0,
                                 "message": "This order is already canceled."
                             });
+                        }else if(order.returned){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "This order can't be cancel because it returned before."
+                            });
                         }else{
                             let diffTime = Math.abs(new Date() - order.createdDate);
                             let diffHours = diffTime / (1000 * 60 * 60);
