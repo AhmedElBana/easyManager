@@ -98,18 +98,22 @@ router.post('/create', authenticate, function(req, res, next) {
     }
 });
 var updateStoreSmsCalc = (body, callback) => {
-    let updateBody = {$inc : {'usedSMS' : body.customersData.length, 'availableSMS' : -body.customersData.length}};
-    let query = {'parent': body.parent};
-    Store.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-        if(e){
-            callback({
-                "status": 0,
-                "message": "error happen while update store sms status."
-            })
-        }else{
-            callback(null)
-        }
-    })
+    if(body.customersData){
+        let updateBody = {$inc : {'usedSMS' : body.customersData.length, 'availableSMS' : -body.customersData.length}};
+        let query = {'parent': body.parent};
+        Store.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                callback({
+                    "status": 0,
+                    "message": "error happen while update store sms status."
+                })
+            }else{
+                callback(null)
+            }
+        })
+    }else{
+        callback(null)
+    }
 }
 var updatePromoSmsStatus = (body, callback) => {
     let updateBody = {"sms": false};
@@ -732,7 +736,7 @@ router.get('/list', authenticate, function(req, res, next) {
         const options = {
             page: page,
             limit: page_size,
-            sort: { createdAt: -1 },
+            sort: { createdDate: -1 },
             collation: {
             locale: 'en'
             }
