@@ -10,6 +10,9 @@ let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
 
+
+
+
 /* add old product */
 router.post('/add', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('116')){

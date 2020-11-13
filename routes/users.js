@@ -5,6 +5,10 @@ let {User} = require('./../db/models/user');
 let {Store} = require('./../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
 
+
+
+
+
 let nodeMailer = require('nodemailer');
 /* User Login. */
 router.post('/login', function(req, res, next) {
