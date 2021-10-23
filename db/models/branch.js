@@ -24,7 +24,7 @@ let BranchSchema = new mongoose.Schema({
 		required: true
 	},
 	type: {
-		// branch/warehouse
+		// branch/warehouse/factory
 		type: String,
 		trim: true,
 		required: true

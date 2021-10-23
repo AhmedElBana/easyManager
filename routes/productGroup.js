@@ -53,7 +53,7 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
             "message": "This user does not have perrmission to create new product."
         });
     }else{
-        let body = _.pick(req.body, ['_id','name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
+        let body = _.pick(req.body, ['_id','is_material','name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
         
         let images = [];
         body.images_size = 0;
@@ -68,10 +68,10 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
             }
         }
         body.images = images;
-        if(!body.name || !body.branch_id || !body.category_id || !body.price || !body.quantity || !body.description){
+        if(!body.is_material || !body.name || !body.branch_id || !body.category_id || !body.price || !body.quantity || !body.description){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, branch_id, category_id, price, quantity, description) fields are required."
+                "message": "Missing data, (is_material, name, branch_id, category_id, price, quantity, description) fields are required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -264,6 +264,7 @@ function deleteFiles(files, callback){
 }
 var createProductGroup = (res,body) => {
     let newProductGroup = {
+        "is_material": body.is_material,
         "name": body.name,
         "category_id": body.category_id,
         "description": body.description,
@@ -817,6 +818,7 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
+        if(req.query.is_material){filters.is_material = req.query.is_material}
         if(req.query.name){filters.name = new RegExp(req.query.name, 'i')}
         if(req.query._id){filters._id = req.query._id}
         if(req.query.category_id){filters.category_id = req.query.category_id}
