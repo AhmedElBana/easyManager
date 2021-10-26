@@ -8,6 +8,7 @@ let {Product} = require('../db/models/product');
 let {Promo} = require('../db/models/promo');
 let {Store} = require('../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
+let {single_sms} = require('./../services/sms');
 
 /* Create new feature. */
 router.post('/create', authenticate, function(req, res, next) {
@@ -77,13 +78,29 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                 orderObj.promo_id = body.promoData._id;
                                                             }
                                                             let newOrderData = new Order(orderObj);
-                                                            newOrderData.save().then((newOrder) => {                
-                                                                return res.status(201).send({
-                                                                    "status": 1,
-                                                                    "data": {
-                                                                        "orderData": newOrder
+                                                            newOrderData.save().then((newOrder) => {
+                                                                single_sms(
+                                                                    body.parent,
+                                                                    "Thanks for shopping with us.\nYour order id " + newOrder._id + "\nFull Amount " + orderObj.total + "EGP.\nVisit tradket.com/customers for more details.",
+                                                                    customer.phoneNumber,
+                                                                    function(error, data){
+                                                                        if (error){
+                                                                            return res.status(201).send({
+                                                                                "sms": "fail",
+                                                                                "data": {
+                                                                                    "orderData": newOrder
+                                                                                }
+                                                                            });
+                                                                        }else{
+                                                                            return res.status(201).send({
+                                                                                "sms": "success",
+                                                                                "data": {
+                                                                                    "orderData": newOrder
+                                                                                }
+                                                                            });
+                                                                        }
                                                                     }
-                                                                });
+                                                                )
                                                             }).catch((e) => {
                                                                 res.status(400).send({
                                                                     "status": 0,
@@ -145,7 +162,6 @@ var checkPromo = (body, callback) => {
                                                 if(err !== null){
                                                     callback(err);
                                                 }else{
-                                                    console.log(body)
                                                     callback(null)
                                                 }
                                             })
@@ -186,7 +202,6 @@ var calcPromoDiscount = (body, callback) => {
             }
         })
     }else if(body.promoData.productsType == "SELECTED"){
-        console.log("##########")
         let billTotal = 0;
         let discountBill = [];
         body.bill.map((product) => {
@@ -1120,7 +1135,6 @@ var checkReturnPromo = (body,paidAmount, callback) => {
                                                     callback(null);  
                                                 })
                                             }else{
-                                                console.log(body)
                                                 callback(null)
                                             }
                                         })
