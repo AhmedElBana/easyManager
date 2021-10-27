@@ -294,6 +294,7 @@ var createProductGroup = (res,body) => {
                         name += "-" + product.features[key]
                 });
                 let finalProduct = {
+                    "is_material": body.is_material,
                     "group_id": newProductGroup._id,
                     "name": name,
                     "price": product.price,

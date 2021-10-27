@@ -8,13 +8,15 @@ const bcrypt = require('bcryptjs');
 let Custom_productSchema = new mongoose.Schema({
 	_id: { type: String, trim: true },
 	name: { type: String, required: true, minlenght: 2, trim: true },
+	branch: { required: true, type: String, trim: true },
 	price: { type: Number, min: 0, required: true },
 	quantity: { type: Number, min: 0, required: true },
 	//{"material_id": quantity}
-	material: { type:  mongoose.Schema.Types.Mixed, of: String },
+	materials: { type:  mongoose.Schema.Types.Mixed, of: String },
 	//accepted/inprogress/ready/delivered
 	status: { type: String, required: true, minlenght: 2, trim: true },
 	created_at: { type: Date, required: true, trim: true },
+	created_from: { required: true, type: String, trim: true },
 	deadline: { type: Date, required: true, trim: true },
 	accepted_at: { type: Date, required: true, trim: true },
 	accepted_from: { required: true, type: String, trim: true },
@@ -23,7 +25,6 @@ let Custom_productSchema = new mongoose.Schema({
 	delivered_at: { type: Date, required: true, trim: true },
 	delivered_from: { required: true, type: String, trim: true },
 	features: { type:  mongoose.Schema.Types.Mixed, of: String },
-	map: { type:  mongoose.Schema.Types.Mixed, of: String },
 	images: { type: Array },
 	description: { type: String, required: true, trim: true },
 	parent: { required: true, type: String, trim: true },
@@ -33,7 +34,7 @@ let Custom_productSchema = new mongoose.Schema({
 Custom_productSchema.methods.toJSON = function(){
 	let Custom_product = this;
 	let Custom_productObject = Product.toObject();
-	return _.pick(Custom_productObject, ['_id','name','price','quantity','material','status','created_at','deadline','accepted_at','accepted_from','ready_at','ready_from','delivered_at','delivered_from','features','map','images','description','parent','active']);
+	return _.pick(Custom_productObject, ['_id','name','branch','price','quantity','materials','status','created_at','created_from','deadline','accepted_at','accepted_from','ready_at','ready_from','delivered_at','delivered_from','features','images','description','parent','active']);
 }
 
 Custom_productSchema.index({ _id: 1, parent: 1 }, { unique: true });

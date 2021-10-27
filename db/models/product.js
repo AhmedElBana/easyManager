@@ -10,6 +10,10 @@ let ProductSchema = new mongoose.Schema({
 		type: String,
 		trim: true
 	},
+	is_material: {
+		type: Boolean,
+		required: true
+	},
 	group_id: {
 		type: String,
 		required: true,
@@ -54,7 +58,7 @@ let ProductSchema = new mongoose.Schema({
 ProductSchema.methods.toJSON = function(){
 	let Product = this;
 	let ProductObject = Product.toObject();
-	return _.pick(ProductObject, ['_id','name','group_id','price','quantity','features','images','map','parent','active']);
+	return _.pick(ProductObject, ['_id','is_material','name','group_id','price','quantity','features','images','map','parent','active']);
 }
 
 ProductSchema.index({ _id: 1, parent: 1 }, { unique: true });
