@@ -11,6 +11,7 @@ var subCategoryRouter = require('./routes/subCategory')
 var featureRouter = require('./routes/feature')
 var productGroupRouter = require('./routes/productGroup')
 var productRouter = require('./routes/product')
+var custom_productRouter = require('./routes/custom_product')
 var transferRouter = require('./routes/transfer')
 var orderRouter = require('./routes/order')
 var promoRouter = require('./routes/promo')
@@ -47,6 +48,7 @@ app.use('/api/subCategory', subCategoryRouter);
 app.use('/api/feature', featureRouter);
 app.use('/api/productGroup', productGroupRouter);
 app.use('/api/product', productRouter);
+app.use('/api/custom_product', custom_productRouter);
 app.use('/api/transfer', transferRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/promo', promoRouter);
