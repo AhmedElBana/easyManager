@@ -18,12 +18,12 @@ let Custom_productSchema = new mongoose.Schema({
 	created_at: { type: Date, required: true, trim: true },
 	created_from: { required: true, type: String, trim: true },
 	deadline: { type: Date, required: true, trim: true },
-	accepted_at: { type: Date, required: true, trim: true },
-	accepted_from: { required: true, type: String, trim: true },
-	ready_at: { type: Date, required: true, trim: true },
-	ready_from: { required: true, type: String, trim: true },
-	delivered_at: { type: Date, required: true, trim: true },
-	delivered_from: { required: true, type: String, trim: true },
+	accepted_at: { type: Date, trim: true },
+	accepted_from: { type: String, trim: true },
+	ready_at: { type: Date, trim: true },
+	ready_from: { type: String, trim: true },
+	delivered_at: { type: Date, trim: true },
+	delivered_from: { type: String, trim: true },
 	features: { type:  mongoose.Schema.Types.Mixed, of: String },
 	images: { type: Array },
 	description: { type: String, required: true, trim: true },
@@ -33,7 +33,7 @@ let Custom_productSchema = new mongoose.Schema({
 
 Custom_productSchema.methods.toJSON = function(){
 	let Custom_product = this;
-	let Custom_productObject = Product.toObject();
+	let Custom_productObject = Custom_product.toObject();
 	return _.pick(Custom_productObject, ['_id','name','branch','price','quantity','materials','status','created_at','created_from','deadline','accepted_at','accepted_from','ready_at','ready_from','delivered_at','delivered_from','features','images','description','parent','active']);
 }
 

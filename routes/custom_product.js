@@ -76,31 +76,89 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
                 if(err !== null){
                     res.status(400).send(err);
                 }else{
-                    checkBranch(body,function(err){
+                    check_deadline(body, function(err){
                         if(err !== null){
                             res.status(400).send(err);
                         }else{
-                            check_materials(body,function(err){
+                            checkBranch(body,function(err){
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
-                                    calcStorage(res,body,function(err){
+                                    check_materials(body,function(err){
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            //goooo on
-                                            console.log("gooooo on.")
+                                            calcStorage(res,body,function(err){
+                                                if(err !== null){
+                                                    res.status(400).send(err);
+                                                }else{
+                                                    removeProducts(body,function(err){
+                                                        if(err !== null){
+                                                            res.status(400).send(err);
+                                                        }else{
+                                                            //create the custom roduct
+                                                            let custom_roduct_obj = {
+                                                                "_id": new ObjectID().toString(),
+                                                                "name": body.name,
+                                                                "branch": body.branch,
+                                                                "price": body.price,
+                                                                "quantity": body.quantity,
+                                                                "materials": body.materials,
+                                                                "status": "accepted",
+                                                                "created_at": new Date(),
+                                                                "created_from": req.user._id,
+                                                                "deadline": body.deadline,
+                                                                "features": body.features,
+                                                                "images": body.images,
+                                                                "description": body.description,
+                                                                "parent": body.parent,
+                                                                "active": true
+                                                            }
+                                                            let custom_roduct_data = new Custom_product(custom_roduct_obj);
+                                                            custom_roduct_data.save().then((final_custom_roduct) => {
+                                                                return res.status(201).send({
+                                                                    "status": 1,
+                                                                    "data": final_custom_roduct
+                                                                });
+                                                            })
+                                                        }
+                                                    });
+                                                }
+                                            });
                                         }
                                     });
                                 }
                             });
                         }
-                    });
+                    })
                 }
             })
         }
     }
 });
+async function removeProducts(body, callback) {
+    Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
+        updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
+    })
+    callback(null);
+}
+function updateOneProduct(product_id, updatedMap) { 
+    return new Promise(resolve => {
+        totalQuantity = 0;
+        Object.keys(updatedMap).map((branch_id)=>{
+            totalQuantity += updatedMap[branch_id]
+        })
+        let updateBody = {"map": updatedMap, "quantity": totalQuantity};
+        let query = {_id: product_id};
+        Product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                console.log(e)
+            }else{
+                resolve(response);
+            }
+        })
+    });
+}
 var check_materials = (body, callback) => {
     try {
         body.materials = JSON.parse(body.materials);
@@ -166,23 +224,11 @@ var checkMaterialsAvailability = (body, callback) => {
                         return callback(err)
                     }
                 })
-                let bill = [];
-                let totalPrice = 0;
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
                     newMapObj[body.branch] -= productsQuantityMap[singleProduct._id.toString()]
-                    finalProductsQuantityMap[singleProduct._id] = newMapObj
-                    bill.push({
-                        "_id": singleProduct._id,
-                        "name": singleProduct.name,
-                        "quantity": productsQuantityMap[singleProduct._id.toString()],
-                        "price": singleProduct.price,
-                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
-                    })
-                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj;
                 })
-                body.bill = bill;
-                body.subTotal = totalPrice;
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
                 if(!fountError){return callback(null);}
             }
@@ -239,6 +285,17 @@ var checkBranch = (body, callback) => {
             return callback(err);
         }
     });
+}
+var check_deadline = (body, callback) => {
+    if(new Date(body.deadline) == "Invalid Date"){
+        let err = {
+            "status": 0,
+            "message": "Wrong data (deadline) must be valid date."
+        }
+        return callback(err);
+    }else{
+        return callback(null);
+    }
 }
 var check_features = (body, callback) => {
     try {
@@ -361,8 +418,12 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        if(req.query._id){filters._id = req.query._id}
-        if(req.query.name){filters.name = req.query.name}
+        if(req.query._id){
+            filters._id={ $regex: new RegExp(req.query._id), $options: "i" }
+        }
+        if(req.query.name){
+            filters.name={ $regex: new RegExp(req.query.name), $options: "i" }
+        }
         if(errHappen){
             res.status(400).send(err);
         }else{
