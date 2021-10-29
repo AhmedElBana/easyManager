@@ -14,14 +14,14 @@ let {single_sms} = require('./../services/sms');
 /* Create new feature. */
 router.post('/create', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('124')){
-        res.status(400).send({
+        return res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to create new order."
         });
     }else{
         let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id']);
         if(!body.customerName || !body.customerPhone || !body.products || !body.promo || !body.branch_id){
-            res.status(400).send({
+            return res.status(400).send({
                 "status": 0,
                 "message": "Missing data, (customerName, customerPhone, products, promo, branch_id) fields are required."
             });
@@ -33,40 +33,46 @@ router.post('/create', authenticate, function(req, res, next) {
             }
             checkBranch(req, body, function(err){
                 if(err !== null){
-                    res.status(400).send(err);
+                    return res.status(400).send(err);
                 }else{
                     checkCustomer(body, function(err, customer){
                         if(err !== null){
-                            res.status(400).send(err);
+                            return res.status(400).send(err);
                         }else{
                             body.customer_id = customer._id;
                             productsFormatCheck(body, function(err){
                                 if(err !== null){
-                                    res.status(400).send(err);
+                                    return res.status(400).send(err);
                                 }else{
                                     custom_productsFormatCheck(body, function(err){
                                         if(err !== null){
-                                            res.status(400).send(err);
+                                            return res.status(400).send(err);
                                         }else{
                                             checkProductsAvailability(body, function(err){
+                                                console.log("checkProductsAvailability")
+                                                console.log(err)
                                                 if(err !== null){
-                                                    res.status(400).send(err);
+                                                    return res.status(400).send(err);
                                                 }else{
                                                     checkCustomProductsAvailability(body, function(err){
+                                                        console.log("checkCustomProductsAvailability")
+                                                        console.log(err)
                                                         if(err !== null){
-                                                            res.status(400).send(err);
+                                                            return res.status(400).send(err);
                                                         }else{
                                                             checkPromo(body, function(err){
+                                                                console.log("checkPromo")
+                                                                console.log(err)
                                                                 if(err !== null){
-                                                                    res.status(400).send(err);
+                                                                    return res.status(400).send(err);
                                                                 }else{
                                                                     removeProducts(body, function(err){
                                                                         if(err !== null){
-                                                                            res.status(400).send(err);
+                                                                            return res.status(400).send(err);
                                                                         }else{
                                                                             updateCustomProducts(body, function(err){
                                                                                 if(err !== null){
-                                                                                    res.status(400).send(err);
+                                                                                    return res.status(400).send(err);
                                                                                 }else{
                                                                                     //create the order
                                                                                     let orderObj = {
@@ -97,7 +103,7 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                                     newOrderData.save().then((finalNewOrder) => {
                                                                                         single_sms(
                                                                                             finalNewOrder.parent,
-                                                                                            "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
+                                                                                            "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit https://tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
                                                                                             customer.phoneNumber,
                                                                                             function(error, data){
                                                                                                 if (error){
@@ -114,7 +120,7 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                                             }
                                                                                         )
                                                                                     }).catch((e) => {
-                                                                                        res.status(400).send({
+                                                                                        return res.status(400).send({
                                                                                             "status": 0,
                                                                                             "message": e
                                                                                         });
@@ -140,7 +146,7 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
-var checkPromo = (body, callback) => {
+async function checkPromo(body, callback){
     if(body.promo == "false"){
         //no promo
         body.promo_name = null;
@@ -323,7 +329,7 @@ var checkPromoBranch = (body, callback) => {
         })
     }
 }
-var checkProductsAvailability = (body, callback) => {
+async function checkProductsAvailability(body, callback){
     let fountError = false;
     let productsArr = [];
     let productsQuantityMap = {};
@@ -390,7 +396,7 @@ var checkProductsAvailability = (body, callback) => {
         });
 
 }
-var checkCustomProductsAvailability = (body, callback) => {
+async function checkCustomProductsAvailability(body, callback){
     let fountError = false;
     if(body.custom_products){
         let productsArr = [];
@@ -451,8 +457,9 @@ var checkCustomProductsAvailability = (body, callback) => {
                 }
                 return callback(err)
             });
+    }else{
+        return callback(null);
     }
-    if(!fountError){return callback(null);}
 }
 var productsFormatCheck = (body, callback) => {
     let fountError = false;
@@ -511,9 +518,11 @@ var custom_productsFormatCheck = (body, callback) => {
     if(!fountError){return callback(null);}
 }
 async function updateCustomProducts(body, callback) {
-    body.custom_products.map((product)=>{
-        updateOneCustomProduct(product.product_id);
-    })
+    if(body.custom_products){
+        body.custom_products.map((product)=>{
+            updateOneCustomProduct(product.product_id);
+        })
+    }
     callback(null);
 }
 function updateOneCustomProduct(product_id) { 
