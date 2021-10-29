@@ -268,7 +268,13 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        if(req.query._id){filters._id = req.query._id}
+        if(req.query._id){
+            filters._id={ $regex: new RegExp(req.query._id), $options: "i" }
+        }
+        if(req.query.name){
+            filters.name={ $regex: new RegExp(req.query.name), $options: "i" }
+        }
+        if(req.query.is_material){filters.is_material = req.query.is_material}
         if(req.query.branch_id){
             filters["map." + req.query.branch_id] = { $exists: true };
         }
