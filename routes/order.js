@@ -49,20 +49,14 @@ router.post('/create', authenticate, function(req, res, next) {
                                             return res.status(400).send(err);
                                         }else{
                                             checkProductsAvailability(body, function(err){
-                                                console.log("checkProductsAvailability")
-                                                console.log(err)
                                                 if(err !== null){
                                                     return res.status(400).send(err);
                                                 }else{
                                                     checkCustomProductsAvailability(body, function(err){
-                                                        console.log("checkCustomProductsAvailability")
-                                                        console.log(err)
                                                         if(err !== null){
                                                             return res.status(400).send(err);
                                                         }else{
                                                             checkPromo(body, function(err){
-                                                                console.log("checkPromo")
-                                                                console.log(err)
                                                                 if(err !== null){
                                                                     return res.status(400).send(err);
                                                                 }else{
@@ -334,9 +328,11 @@ async function checkProductsAvailability(body, callback){
     let productsArr = [];
     let productsQuantityMap = {};
     let finalProductsQuantityMap = {};
+    let full_obj_by_id = {};
     body.products.map((product)=>{
         productsArr.push(product.product_id)
         productsQuantityMap[product.product_id] = product.quantity;
+        full_obj_by_id[product.product_id] = product;
     })
     Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
         .then((products) => {
@@ -363,15 +359,21 @@ async function checkProductsAvailability(body, callback){
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
                     newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
-                    finalProductsQuantityMap[singleProduct._id] = newMapObj
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj;
+                    let single_final_price;
+                    if(full_obj_by_id[singleProduct._id].final_price && !isNaN(full_obj_by_id[singleProduct._id].final_price)){
+                        single_final_price = full_obj_by_id[singleProduct._id].final_price
+                    }else{
+                        single_final_price = singleProduct.price
+                    }
                     bill.push({
                         "_id": singleProduct._id,
                         "name": singleProduct.name,
                         "quantity": productsQuantityMap[singleProduct._id.toString()],
-                        "price": singleProduct.price,
-                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
+                        "price": single_final_price,
+                        "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price
                     })
-                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
+                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * single_final_price;
                 })
                 body.bill = bill;
                 body.subTotal = totalPrice;
@@ -485,6 +487,14 @@ var productsFormatCheck = (body, callback) => {
                 let err = {
                     "status": 0,
                     "message": "each object inside products must have (quantity) field with numeric value."
+                }
+                return callback(err);
+            }
+            if(product.final_price && (isNaN(product.final_price) || product.final_price < 0)){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "final_price must be positive numeric value."
                 }
                 return callback(err);
             }
