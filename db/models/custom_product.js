@@ -13,8 +13,7 @@ let Custom_productSchema = new mongoose.Schema({
 	quantity: { type: Number, min: 0, required: true },
 	//{"material_id": quantity}
 	materials: { type:  mongoose.Schema.Types.Mixed, of: String },
-	//accepted/inprogress/ready/delivered
-	status: { type: String, required: true, minlenght: 2, trim: true },
+	status: { type: String, required: true, trim: true, enum: ['created','assigned','accepted','inprogress','ready','delivered'] },
 	created_at: { type: Date, required: true, trim: true },
 	created_from: { required: true, type: String, trim: true },
 	deadline: { type: Date, required: true, trim: true },

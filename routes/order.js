@@ -5,6 +5,7 @@ let {Order} = require('../db/models/order');
 let {Branch} = require('../db/models/branch');
 let {Customer} = require('../db/models/customer');
 let {Product} = require('../db/models/product');
+let {Custom_product} = require('../db/models/custom_product');
 let {Promo} = require('../db/models/promo');
 let {Store} = require('../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
@@ -18,7 +19,7 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new order."
         });
     }else{
-        let body = _.pick(req.body, ['customerName','customerPhone','products','promo','promo_name','branch_id']);
+        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id']);
         if(!body.customerName || !body.customerPhone || !body.products || !body.promo || !body.branch_id){
             res.status(400).send({
                 "status": 0,
@@ -43,70 +44,87 @@ router.post('/create', authenticate, function(req, res, next) {
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
-                                    checkProductsAvailability(body, function(err){
+                                    custom_productsFormatCheck(body, function(err){
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            checkPromo(body, function(err){
+                                            checkProductsAvailability(body, function(err){
                                                 if(err !== null){
                                                     res.status(400).send(err);
                                                 }else{
-                                                    removeProducts(body, function(err){
+                                                    checkCustomProductsAvailability(body, function(err){
                                                         if(err !== null){
                                                             res.status(400).send(err);
                                                         }else{
-                                                            //create the order
-                                                            let orderObj = {
-                                                                "type": "Order",
-                                                                "customer_id": customer._id,
-                                                                "customer_name": customer.name,
-                                                                "customer_phoneNumber": customer.phoneNumber,
-                                                                "products": body.products,
-                                                                "bill": body.bill,
-                                                                "subTotal": body.subTotal.toFixed(2),
-                                                                "total": body.total.toFixed(2),
-                                                                "promo": body.promo,
-                                                                "discountValue": body.discountValue.toFixed(2),
-                                                                "createdDate": new Date(),
-                                                                "branch_id": body.branch_id,
-                                                                "creator_id": req.user._id,
-                                                                "canceled": false,
-                                                                "returned": false,
-                                                                "parent": body.parent
-                                                            }
-                                                            if(body.promoData){
-                                                                orderObj.promo_id = body.promoData._id;
-                                                            }
-                                                            let newOrderData = new Order(orderObj);
-                                                            newOrderData.save().then((newOrder) => {
-                                                                single_sms(
-                                                                    body.parent,
-                                                                    "Thanks for shopping with us.\nYour order id " + newOrder._id + "\nFull Amount " + orderObj.total + "EGP.\nVisit tradket.com/customers for more details.",
-                                                                    customer.phoneNumber,
-                                                                    function(error, data){
-                                                                        if (error){
-                                                                            return res.status(201).send({
-                                                                                "sms": "fail",
-                                                                                "data": {
-                                                                                    "orderData": newOrder
-                                                                                }
-                                                                            });
+                                                            checkPromo(body, function(err){
+                                                                if(err !== null){
+                                                                    res.status(400).send(err);
+                                                                }else{
+                                                                    removeProducts(body, function(err){
+                                                                        if(err !== null){
+                                                                            res.status(400).send(err);
                                                                         }else{
-                                                                            return res.status(201).send({
-                                                                                "sms": "success",
-                                                                                "data": {
-                                                                                    "orderData": newOrder
+                                                                            updateCustomProducts(body, function(err){
+                                                                                if(err !== null){
+                                                                                    res.status(400).send(err);
+                                                                                }else{
+                                                                                    //create the order
+                                                                                    let orderObj = {
+                                                                                        "type": "Order",
+                                                                                        "customer_id": customer._id,
+                                                                                        "customer_name": customer.name,
+                                                                                        "customer_phoneNumber": customer.phoneNumber,
+                                                                                        "products": body.products,
+                                                                                        "bill": body.bill,
+                                                                                        "subTotal": body.subTotal.toFixed(2),
+                                                                                        "total": body.total.toFixed(2),
+                                                                                        "promo": body.promo,
+                                                                                        "discountValue": body.discountValue.toFixed(2),
+                                                                                        "createdDate": new Date(),
+                                                                                        "branch_id": body.branch_id,
+                                                                                        "creator_id": req.user._id,
+                                                                                        "canceled": false,
+                                                                                        "returned": false,
+                                                                                        "parent": body.parent
+                                                                                    }
+                                                                                    if(body.promoData){
+                                                                                        orderObj.promo_id = body.promoData._id;
+                                                                                    }
+                                                                                    if(body.custom_products){
+                                                                                        orderObj.custom_products = body.custom_products;
+                                                                                    }
+                                                                                    let newOrderData = new Order(orderObj);
+                                                                                    newOrderData.save().then((finalNewOrder) => {
+                                                                                        single_sms(
+                                                                                            finalNewOrder.parent,
+                                                                                            "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
+                                                                                            customer.phoneNumber,
+                                                                                            function(error, data){
+                                                                                                if (error){
+                                                                                                    return res.status(201).send({
+                                                                                                        "sms": "fail",
+                                                                                                        "data": finalNewOrder
+                                                                                                    });
+                                                                                                }else{
+                                                                                                    return res.status(201).send({
+                                                                                                        "sms": "success",
+                                                                                                        "data": finalNewOrder
+                                                                                                    });
+                                                                                                }
+                                                                                            }
+                                                                                        )
+                                                                                    }).catch((e) => {
+                                                                                        res.status(400).send({
+                                                                                            "status": 0,
+                                                                                            "message": e
+                                                                                        });
+                                                                                    });
                                                                                 }
-                                                                            });
+                                                                            })
                                                                         }
-                                                                    }
-                                                                )
-                                                            }).catch((e) => {
-                                                                res.status(400).send({
-                                                                    "status": 0,
-                                                                    "message": e
-                                                                });
-                                                            });
+                                                                    })
+                                                                }
+                                                            })
                                                         }
                                                     })
                                                 }
@@ -372,6 +390,70 @@ var checkProductsAvailability = (body, callback) => {
         });
 
 }
+var checkCustomProductsAvailability = (body, callback) => {
+    let fountError = false;
+    if(body.custom_products){
+        let productsArr = [];
+        let productsQuantityMap = {};
+        body.custom_products.map((product)=>{
+            productsArr.push(product.product_id)
+            productsQuantityMap[product.product_id] = product.quantity;
+        })
+        Custom_product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+            .then((products) => {
+                if(products.length !== productsArr.length){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "Wrong data: can't find some custom products, please check (product_id) for each custom product."
+                    };
+                    return callback(err)
+                }else{
+                    products.map((singleProduct) => {
+                        if(singleProduct.status != "created"){
+                            fountError = true;
+                            let err = {
+                                "status": 0,
+                                "message": "custom product with is (" + singleProduct._id.toString() +") is assigned to another order."
+                            };
+                            return callback(err)
+                        }
+                    })
+                    let bill = [];
+                    let totalPrice = 0;
+                    products.map((singleProduct) => {
+                        bill.push({
+                            "_id": singleProduct._id,
+                            "name": singleProduct.name,
+                            "quantity": singleProduct.quantity,
+                            "price": singleProduct.price,
+                            "total": singleProduct.price
+                        })
+                        totalPrice += singleProduct.price;
+                    })
+                    body.bill = [...body.bill, ...bill];
+                    body.subTotal += totalPrice;
+                    if(!fountError){return callback(null);}
+                }
+            },(e) => {
+                fountError = true;
+                let err;
+                if(e.name && e.name == 'CastError'){
+                    err = {
+                        "status": 0,
+                        "message": "Wrong value: (" + e.value + ") is not valid custom product id."
+                    };
+                }else{
+                    err = {
+                        "status": 0,
+                        "message": "error hanppen while query custom products data."
+                    };
+                }
+                return callback(err)
+            });
+    }
+    if(!fountError){return callback(null);}
+}
 var productsFormatCheck = (body, callback) => {
     let fountError = false;
     if(typeof(body.products[0]) !== 'object'){
@@ -402,6 +484,50 @@ var productsFormatCheck = (body, callback) => {
         })
     }
     if(!fountError){return callback(null);}
+}
+var custom_productsFormatCheck = (body, callback) => {
+    let fountError = false;
+    if(body.custom_products){
+        if(typeof(body.custom_products[0]) !== 'object'){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (custom_products) must be array of objects."
+            }
+            return callback(err);
+        }else{
+            body.custom_products.map((product)=>{
+                if(!product.product_id){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "each object inside custom_products must have (product_id) field."
+                    }
+                    return callback(err);
+                }
+            })
+        }
+    }
+    if(!fountError){return callback(null);}
+}
+async function updateCustomProducts(body, callback) {
+    body.custom_products.map((product)=>{
+        updateOneCustomProduct(product.product_id);
+    })
+    callback(null);
+}
+function updateOneCustomProduct(product_id) { 
+    return new Promise(resolve => {
+        let updateBody = {"status": "assigned"};
+        let query = {_id: product_id};
+        Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                console.log(e)
+            }else{
+                resolve(response);
+            }
+        })
+    });
 }
 async function removeProducts(body, callback) {
     Object.keys(body.finalProductsQuantityMap).map((product_id)=>{

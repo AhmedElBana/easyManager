@@ -11,6 +11,7 @@ let OrderSchema = new mongoose.Schema({
 	customer_name: {type: String,required: true,minlenght: 2,trim: true},
 	customer_phoneNumber: {type: String,trim: true,required: true},
 	products: { type: Array, required: true },
+	custom_products: { type: Array },
 	bill: { type: Array, required: true },
 	subTotal: { type: Number, min: 0, required: true },
 	total: { type: Number, min: 0, required: true },
@@ -36,7 +37,7 @@ let OrderSchema = new mongoose.Schema({
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','type','customer_id','customer_name','customer_phoneNumber','products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','returnAmount','total','promo','promo_id','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','returnNote','parent']);
+	return _.pick(OrderObject, ['_id','type','customer_id','customer_name','customer_phoneNumber','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','returnAmount','total','promo','promo_id','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','returnNote','parent']);
 }
 
 OrderSchema.plugin(mongoosePaginate);

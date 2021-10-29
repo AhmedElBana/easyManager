@@ -104,7 +104,7 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
                                                                 "price": body.price,
                                                                 "quantity": body.quantity,
                                                                 "materials": body.materials,
-                                                                "status": "accepted",
+                                                                "status": "created",
                                                                 "created_at": new Date(),
                                                                 "created_from": req.user._id,
                                                                 "deadline": body.deadline,
