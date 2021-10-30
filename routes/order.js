@@ -574,56 +574,60 @@ async function removeProducts(body, callback) {
     callback(null);
 }
 async function addProducts(productsArr, parent_id, branch_id, callback) {
-    let fountError = false;
-    let productsIds = [];
-    let productsMap = {};
-    productsArr.map((product)=>{
-        productsIds.push(product.product_id);
-        productsMap[product.product_id] = product.quantity
-    })
-    Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
-    .then((products) => {
-        if(products.length !== productsIds.length){
+    if(productsArr && productsArr.length > 0){
+        let fountError = false;
+        let productsIds = [];
+        let productsMap = {};
+        productsArr.map((product)=>{
+            productsIds.push(product.product_id);
+            productsMap[product.product_id] = product.quantity
+        })
+        Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+        .then((products) => {
+            if(products.length !== productsIds.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                let idWithFullMap = {};
+                products.map((singleProduct) => {
+                    idWithFullMap[singleProduct._id] = singleProduct.map;
+                })
+                let newIdWithFullMap = {...idWithFullMap}
+                Object.keys(productsMap).map((product_id) => {
+                    if(newIdWithFullMap[product_id][branch_id]){
+                        newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
+                    }else{
+                        newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
+                    }
+                })
+                Object.keys(newIdWithFullMap).map((product_id)=>{
+                    updateOneProduct(product_id,newIdWithFullMap[product_id]);
+                })
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
             fountError = true;
-            let err = {
-                "status": 0,
-                "message": "Wrong data: can't find some products, please check (product_id) for each product."
-            };
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
             return callback(err)
-        }else{
-            let idWithFullMap = {};
-            products.map((singleProduct) => {
-                idWithFullMap[singleProduct._id] = singleProduct.map;
-            })
-            let newIdWithFullMap = {...idWithFullMap}
-            Object.keys(productsMap).map((product_id) => {
-                if(newIdWithFullMap[product_id][branch_id]){
-                    newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
-                }else{
-                    newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
-                }
-            })
-            Object.keys(newIdWithFullMap).map((product_id)=>{
-                updateOneProduct(product_id,newIdWithFullMap[product_id]);
-            })
-            if(!fountError){return callback(null);}
-        }
-    },(e) => {
-        fountError = true;
-        let err;
-        if(e.name && e.name == 'CastError'){
-            err = {
-                "status": 0,
-                "message": "Wrong value: (" + e.value + ") is not valid product id."
-            };
-        }else{
-            err = {
-                "status": 0,
-                "message": "error hanppen while query products data."
-            };
-        }
-        return callback(err)
-    });
+        });
+    }else{
+        return callback(null);
+    }
 }
 function updateOneProduct(product_id, updatedMap) { 
     return new Promise(resolve => {
@@ -777,43 +781,47 @@ function cancelOneCustomProduct(custom_product) {
     });
 }
 async function cancelCustomProducts(custom_products, parent_id, callback) {
-    let fountError = false;
-    let productsIds = [];
-    custom_products.map((product)=>{
-        productsIds.push(product.product_id);
-    })
-    Custom_product.find({'_id': { $in: productsIds}, 'parent': parent_id})
-    .then((custom_products) => {
-        if(custom_products.length !== productsIds.length){
+    if(custom_products && custom_products.length > 0){
+        let fountError = false;
+        let productsIds = [];
+        custom_products.map((product)=>{
+            productsIds.push(product.product_id);
+        })
+        Custom_product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+        .then((custom_products) => {
+            if(custom_products.length !== productsIds.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some custom_products, please check (product_id) for each product."
+                };
+                return callback(err)
+            }else{
+                let idWithFullMap = {};
+                custom_products.map((single_custom_product) => {
+                    cancelOneCustomProduct(single_custom_product);
+                })
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
             fountError = true;
-            let err = {
-                "status": 0,
-                "message": "Wrong data: can't find some custom_products, please check (product_id) for each product."
-            };
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
             return callback(err)
-        }else{
-            let idWithFullMap = {};
-            custom_products.map((single_custom_product) => {
-                cancelOneCustomProduct(single_custom_product);
-            })
-            if(!fountError){return callback(null);}
-        }
-    },(e) => {
-        fountError = true;
-        let err;
-        if(e.name && e.name == 'CastError'){
-            err = {
-                "status": 0,
-                "message": "Wrong value: (" + e.value + ") is not valid product id."
-            };
-        }else{
-            err = {
-                "status": 0,
-                "message": "error hanppen while query products data."
-            };
-        }
-        return callback(err)
-    });
+        });
+    }else{
+        return callback(null);
+    }
 }
 /* cancel order. */
 router.post('/cancel', authenticate, function(req, res, next) {
@@ -902,7 +910,7 @@ router.post('/cancel', authenticate, function(req, res, next) {
                                                     }else{
                                                         return res.send({
                                                             "status": 1,
-                                                            "data": {"orderData": response}
+                                                            "data": response
                                                         });
                                                     }
                                                 })
