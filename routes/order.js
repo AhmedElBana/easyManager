@@ -547,14 +547,14 @@ var custom_productsFormatCheck = (body, callback) => {
 async function updateCustomProducts(body, callback) {
     if(body.custom_products){
         body.custom_products.map((product)=>{
-            updateOneCustomProduct(product.product_id);
+            updateOneCustomProduct(product.product_id, "assigned");
         })
     }
     callback(null);
 }
-function updateOneCustomProduct(product_id) { 
+function updateOneCustomProduct(product_id, state) { 
     return new Promise(resolve => {
-        let updateBody = {"status": "assigned"};
+        let updateBody = {"status": state};
         let query = {_id: product_id};
         Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
             if(e){
@@ -705,6 +705,116 @@ var checkCustomer = (body, callback) => {
         }, null)
     });
 }
+async function addMaterials(productsArr, parent_id, branch_id, callback) {
+    let fountError = false;
+    let productsIds = [];
+    let productsMap = {};
+    Object.keys(productsArr).map((product_id)=>{
+        productsIds.push(product_id);
+        productsMap[product_id] = productsArr[product_id]
+    })
+    Product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+    .then((products) => {
+        if(products.length !== productsIds.length){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data: can't find some products, please check (product_id) for each product."
+            };
+            return callback(err)
+        }else{
+            let idWithFullMap = {};
+            products.map((singleProduct) => {
+                idWithFullMap[singleProduct._id] = singleProduct.map;
+            })
+            let newIdWithFullMap = {...idWithFullMap}
+            Object.keys(productsMap).map((product_id) => {
+                if(newIdWithFullMap[product_id][branch_id]){
+                    newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
+                }else{
+                    newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
+                }
+            })
+            Object.keys(newIdWithFullMap).map((product_id)=>{
+                updateOneProduct(product_id,newIdWithFullMap[product_id]);
+            })
+            if(!fountError){return callback(null);}
+        }
+    },(e) => {
+        fountError = true;
+        let err;
+        if(e.name && e.name == 'CastError'){
+            err = {
+                "status": 0,
+                "message": "Wrong value: (" + e.value + ") is not valid product id."
+            };
+        }else{
+            err = {
+                "status": 0,
+                "message": "error hanppen while query products data."
+            };
+        }
+        return callback(err)
+    });
+}
+function cancelOneCustomProduct(custom_product) { 
+    return new Promise(resolve => {
+        let updateBody = {"status": "canceled"};
+        let query = {_id: custom_product._id};
+        Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                console.log(e)
+            }else{
+                addMaterials(response.materials, response.parent, response.materials_branch, function(err){
+                    if(err !== null){
+                        res.status(400).send(err);
+                    }else{
+                        resolve(response);
+                    }
+                })
+            }
+        })
+    });
+}
+async function cancelCustomProducts(custom_products, parent_id, callback) {
+    let fountError = false;
+    let productsIds = [];
+    custom_products.map((product)=>{
+        productsIds.push(product.product_id);
+    })
+    Custom_product.find({'_id': { $in: productsIds}, 'parent': parent_id})
+    .then((custom_products) => {
+        if(custom_products.length !== productsIds.length){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data: can't find some custom_products, please check (product_id) for each product."
+            };
+            return callback(err)
+        }else{
+            let idWithFullMap = {};
+            custom_products.map((single_custom_product) => {
+                cancelOneCustomProduct(single_custom_product);
+            })
+            if(!fountError){return callback(null);}
+        }
+    },(e) => {
+        fountError = true;
+        let err;
+        if(e.name && e.name == 'CastError'){
+            err = {
+                "status": 0,
+                "message": "Wrong value: (" + e.value + ") is not valid product id."
+            };
+        }else{
+            err = {
+                "status": 0,
+                "message": "error hanppen while query products data."
+            };
+        }
+        return callback(err)
+    });
+}
 /* cancel order. */
 router.post('/cancel', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('125')){
@@ -767,29 +877,35 @@ router.post('/cancel', authenticate, function(req, res, next) {
                                     if(err !== null){
                                         res.status(400).send(err);
                                     }else{
-                                        //cancel order
-                                        let updateBody = {
-                                            "canceled": true,
-                                            "canceledDate": new Date()
-                                        };
-                                        Order.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
-                                            if(e){
-                                                if(e.name && e.name == "CastError"){
-                                                    res.status(400).send({
-                                                        "status": 0,
-                                                        "message": e.message
-                                                    });
-                                                }else{
-                                                    res.status(400).send({
-                                                        "status": 0,
-                                                        "message": "error while updating order data."
-                                                    });
-                                                }
+                                        cancelCustomProducts(order.custom_products, order.parent, function(err){
+                                            if(err !== null){
+                                                res.status(400).send(err);
                                             }else{
-                                                return res.send({
-                                                    "status": 1,
-                                                    "data": {"orderData": response}
-                                                });
+                                                //cancel order
+                                                let updateBody = {
+                                                    "canceled": true,
+                                                    "canceledDate": new Date()
+                                                };
+                                                Order.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                                                    if(e){
+                                                        if(e.name && e.name == "CastError"){
+                                                            res.status(400).send({
+                                                                "status": 0,
+                                                                "message": e.message
+                                                            });
+                                                        }else{
+                                                            res.status(400).send({
+                                                                "status": 0,
+                                                                "message": "error while updating order data."
+                                                            });
+                                                        }
+                                                    }else{
+                                                        return res.send({
+                                                            "status": 1,
+                                                            "data": {"orderData": response}
+                                                        });
+                                                    }
+                                                })
                                             }
                                         })
                                     }

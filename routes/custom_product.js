@@ -45,7 +45,7 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
             "message": "This user does not have perrmission to create new custom product."
         });
     }else{
-        let body = _.pick(req.body, ['name','branch','price','quantity','materials','deadline','features','image','description']);
+        let body = _.pick(req.body, ['name','branch','price','quantity','materials_branch','materials','deadline','features','image','description']);
         
         let images = [];
         body.images_size = 0;
@@ -60,10 +60,10 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
             }
         }
         body.images = images;
-        if(!body.name || !body.branch || !body.price || !body.quantity || !body.materials || !body.deadline || !body.features || !body.description){
+        if(!body.name || !body.branch || !body.price || !body.quantity || !body.materials_branch || !body.materials || !body.deadline || !body.features || !body.description){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (name, branch, price, quantity, materials, deadline, features, description) fields are required."
+                "message": "Missing data, (name, branch, price, quantity, materials_branch, materials, deadline, features, description) fields are required."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -84,49 +84,56 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
-                                    check_materials(body,function(err){
+                                    checkMaterialsBranch(body,function(err){
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            calcStorage(res,body,function(err){
+                                            check_materials(body,function(err){
                                                 if(err !== null){
                                                     res.status(400).send(err);
                                                 }else{
-                                                    removeProducts(body,function(err){
+                                                    calcStorage(res,body,function(err){
                                                         if(err !== null){
                                                             res.status(400).send(err);
                                                         }else{
-                                                            //create the custom roduct
-                                                            let custom_roduct_obj = {
-                                                                "_id": new ObjectID().toString(),
-                                                                "name": body.name,
-                                                                "branch": body.branch,
-                                                                "price": body.price,
-                                                                "quantity": body.quantity,
-                                                                "materials": body.materials,
-                                                                "status": "created",
-                                                                "created_at": new Date(),
-                                                                "created_from": req.user._id,
-                                                                "deadline": body.deadline,
-                                                                "features": body.features,
-                                                                "images": body.images,
-                                                                "description": body.description,
-                                                                "parent": body.parent,
-                                                                "active": true
-                                                            }
-                                                            let custom_roduct_data = new Custom_product(custom_roduct_obj);
-                                                            custom_roduct_data.save().then((final_custom_roduct) => {
-                                                                return res.status(201).send({
-                                                                    "status": 1,
-                                                                    "data": final_custom_roduct
-                                                                });
-                                                            })
+                                                            removeProducts(body,function(err){
+                                                                if(err !== null){
+                                                                    res.status(400).send(err);
+                                                                }else{
+                                                                    //create the custom roduct
+                                                                    let custom_roduct_obj = {
+                                                                        "_id": new ObjectID().toString(),
+                                                                        "name": body.name,
+                                                                        "branch": body.branch,
+                                                                        "price": body.price,
+                                                                        "quantity": body.quantity,
+                                                                        "materials_branch": body.materials_branch,
+                                                                        "materials": body.materials,
+                                                                        "status": "created",
+                                                                        "created_at": new Date(),
+                                                                        "created_from": req.user._id,
+                                                                        "deadline": body.deadline,
+                                                                        "features": body.features,
+                                                                        "images": body.images,
+                                                                        "description": body.description,
+                                                                        "parent": body.parent,
+                                                                        "active": true
+                                                                    }
+                                                                    let custom_roduct_data = new Custom_product(custom_roduct_obj);
+                                                                    custom_roduct_data.save().then((final_custom_roduct) => {
+                                                                        return res.status(201).send({
+                                                                            "status": 1,
+                                                                            "data": final_custom_roduct
+                                                                        });
+                                                                    })
+                                                                }
+                                                            });
                                                         }
                                                     });
                                                 }
                                             });
                                         }
-                                    });
+                                    })
                                 }
                             });
                         }
@@ -215,18 +222,18 @@ var checkMaterialsAvailability = (body, callback) => {
                 return callback(err)
             }else{
                 products.map((singleProduct) => {
-                    if(!singleProduct.map[body.branch] || singleProduct.map[body.branch] < productsQuantityMap[singleProduct._id.toString()]){
+                    if(!singleProduct.map[body.materials_branch] || singleProduct.map[body.materials_branch] < productsQuantityMap[singleProduct._id.toString()]){
                         fountError = true;
                         let err = {
                             "status": 0,
-                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
+                            "message": "can't find enough quantity from this material  (" + singleProduct._id.toString() +") in selected materials_branch."
                         };
                         return callback(err)
                     }
                 })
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
-                    newMapObj[body.branch] -= productsQuantityMap[singleProduct._id.toString()]
+                    newMapObj[body.materials_branch] -= productsQuantityMap[singleProduct._id.toString()]
                     finalProductsQuantityMap[singleProduct._id] = newMapObj;
                 })
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
@@ -281,6 +288,43 @@ var checkBranch = (body, callback) => {
             let err = {
                 "status": 0,
                 "message": "error happen while query branch data."
+            }
+            return callback(err);
+        }
+    });
+}
+var checkMaterialsBranch = (body, callback) => {
+    Branch.findOne({_id: body.materials_branch, parent: body.parent})
+    .then((branch) => {
+        if(!branch){
+            let err = {
+                "status": 0,
+                "message": "wrong materials_branch."
+            }
+            return callback(err);
+        }else{
+            // if(!req.user.branches.includes(body.branch) && req.user.type != "admin"){
+            //     let err = {
+            //         "status": 0,
+            //         "message": "This user don't have access to this branch."
+            //     }
+            //     return callback(err);
+            // }else{
+            //     callback(null)
+            // }
+            callback(null)
+        }
+    },(e) => {
+        if(e.name && e.name == 'CastError'){
+            let err = {
+                "status": 0,
+                "message": "wrong materials_branch."
+            }
+            return callback(err);
+        }else{
+            let err = {
+                "status": 0,
+                "message": "error happen while query materials_branch data."
             }
             return callback(err);
         }

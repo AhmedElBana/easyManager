@@ -12,8 +12,9 @@ let Custom_productSchema = new mongoose.Schema({
 	price: { type: Number, min: 0, required: true },
 	quantity: { type: Number, min: 0, required: true },
 	//{"material_id": quantity}
+	materials_branch: { required: true, type: String, trim: true },
 	materials: { type:  mongoose.Schema.Types.Mixed, of: String },
-	status: { type: String, required: true, trim: true, enum: ['created','assigned','accepted','inprogress','ready','delivered'] },
+	status: { type: String, required: true, trim: true, enum: ['created','assigned','accepted','inprogress','ready','delivered','canceled'] },
 	created_at: { type: Date, required: true, trim: true },
 	created_from: { required: true, type: String, trim: true },
 	deadline: { type: Date, required: true, trim: true },
@@ -33,7 +34,7 @@ let Custom_productSchema = new mongoose.Schema({
 Custom_productSchema.methods.toJSON = function(){
 	let Custom_product = this;
 	let Custom_productObject = Custom_product.toObject();
-	return _.pick(Custom_productObject, ['_id','name','branch','price','quantity','materials','status','created_at','created_from','deadline','accepted_at','accepted_from','ready_at','ready_from','delivered_at','delivered_from','features','images','description','parent','active']);
+	return _.pick(Custom_productObject, ['_id','name','branch','price','quantity','materials_branch','materials','status','created_at','created_from','deadline','accepted_at','accepted_from','ready_at','ready_from','delivered_at','delivered_from','features','images','description','parent','active']);
 }
 
 Custom_productSchema.index({ _id: 1, parent: 1 }, { unique: true });
