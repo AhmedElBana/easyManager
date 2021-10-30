@@ -1495,5 +1495,30 @@ router.get('/list', authenticate, function(req, res, next) {
         }
     }
 });
-
+router.get('/bill', function(req, res, next){
+    if(!req.query._id){
+        res.status(400).send({
+            "status": 0,
+            "message": "Missing data, (_id) field is required."
+        });
+    }else{
+        let filters = {_id: req.query._id}
+        Order.findOne(filters)
+        .then((order) => {
+            if(!order){
+                res.status(400).send({
+                    "message": "can't find any order with this _id."
+                });
+            }else{
+                return res.send({
+                    "data": order
+                });
+            }
+        },(e) => {
+            res.status(400).send({
+                "message": "can't find any order with this _id."
+            });
+        });
+    }
+});
 module.exports = router;
