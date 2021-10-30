@@ -10,7 +10,7 @@ let OrderSchema = new mongoose.Schema({
 	customer_id: { type: String, required: true, minlenght: 2, trim: true },
 	customer_name: {type: String,required: true,minlenght: 2,trim: true},
 	customer_phoneNumber: {type: String,trim: true,required: true},
-	products: { type: Array, required: true },
+	products: { type: Array },
 	custom_products: { type: Array },
 	bill: { type: Array, required: true },
 	subTotal: { type: Number, min: 0, required: true },

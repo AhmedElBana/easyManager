@@ -20,10 +20,15 @@ router.post('/create', authenticate, function(req, res, next) {
         });
     }else{
         let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id']);
-        if(!body.customerName || !body.customerPhone || !body.products || !body.promo || !body.branch_id){
+        if(!body.customerName || !body.customerPhone || !body.promo || !body.branch_id){
             return res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (customerName, customerPhone, products, promo, branch_id) fields are required."
+                "message": "Missing data, (customerName, customerPhone, promo, branch_id) fields are required."
+            });
+        }else if(!body.products && !body.custom_products){
+            return res.status(400).send({
+                "status": 0,
+                "message": "Missing data, must have one field from (products, custom_products) at least."
             });
         }else{
             if(req.user.type == 'admin'){
@@ -74,7 +79,6 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                                         "customer_id": customer._id,
                                                                                         "customer_name": customer.name,
                                                                                         "customer_phoneNumber": customer.phoneNumber,
-                                                                                        "products": body.products,
                                                                                         "bill": body.bill,
                                                                                         "subTotal": body.subTotal.toFixed(2),
                                                                                         "total": body.total.toFixed(2),
@@ -89,6 +93,9 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                                     }
                                                                                     if(body.promoData){
                                                                                         orderObj.promo_id = body.promoData._id;
+                                                                                    }
+                                                                                    if(body.products){
+                                                                                        orderObj.products = body.products;
                                                                                     }
                                                                                     if(body.custom_products){
                                                                                         orderObj.custom_products = body.custom_products;
@@ -324,79 +331,85 @@ var checkPromoBranch = (body, callback) => {
     }
 }
 async function checkProductsAvailability(body, callback){
-    let fountError = false;
-    let productsArr = [];
-    let productsQuantityMap = {};
-    let finalProductsQuantityMap = {};
-    let full_obj_by_id = {};
-    body.products.map((product)=>{
-        productsArr.push(product.product_id)
-        productsQuantityMap[product.product_id] = product.quantity;
-        full_obj_by_id[product.product_id] = product;
-    })
-    Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
-        .then((products) => {
-            if(products.length !== productsArr.length){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "Wrong data: can't find some products, please check (product_id) for each product."
-                };
-                return callback(err)
-            }else{
-                products.map((singleProduct) => {
-                    if(!singleProduct.map[body.branch_id] || singleProduct.map[body.branch_id] < productsQuantityMap[singleProduct._id.toString()]){
-                        fountError = true;
-                        let err = {
-                            "status": 0,
-                            "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
-                        };
-                        return callback(err)
-                    }
-                })
-                let bill = [];
-                let totalPrice = 0;
-                products.map((singleProduct) => {
-                    var newMapObj = {...singleProduct.map};
-                    newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
-                    finalProductsQuantityMap[singleProduct._id] = newMapObj;
-                    let single_final_price;
-                    if(full_obj_by_id[singleProduct._id].final_price && !isNaN(full_obj_by_id[singleProduct._id].final_price)){
-                        single_final_price = full_obj_by_id[singleProduct._id].final_price
-                    }else{
-                        single_final_price = singleProduct.price
-                    }
-                    bill.push({
-                        "_id": singleProduct._id,
-                        "name": singleProduct.name,
-                        "quantity": productsQuantityMap[singleProduct._id.toString()],
-                        "price": single_final_price,
-                        "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price
+    if(body.products){
+        let fountError = false;
+        let productsArr = [];
+        let productsQuantityMap = {};
+        let finalProductsQuantityMap = {};
+        let full_obj_by_id = {};
+        body.products.map((product)=>{
+            productsArr.push(product.product_id)
+            productsQuantityMap[product.product_id] = product.quantity;
+            full_obj_by_id[product.product_id] = product;
+        })
+        Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
+            .then((products) => {
+                if(products.length !== productsArr.length){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "Wrong data: can't find some products, please check (product_id) for each product."
+                    };
+                    return callback(err)
+                }else{
+                    products.map((singleProduct) => {
+                        if(!singleProduct.map[body.branch_id] || singleProduct.map[body.branch_id] < productsQuantityMap[singleProduct._id.toString()]){
+                            fountError = true;
+                            let err = {
+                                "status": 0,
+                                "message": "can't find enough quantity from this product (" + singleProduct._id.toString() +")."
+                            };
+                            return callback(err)
+                        }
                     })
-                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * single_final_price;
-                })
-                body.bill = bill;
-                body.subTotal = totalPrice;
-                body.finalProductsQuantityMap = finalProductsQuantityMap;
-                if(!fountError){return callback(null);}
-            }
-        },(e) => {
-            fountError = true;
-            let err;
-            if(e.name && e.name == 'CastError'){
-                err = {
-                    "status": 0,
-                    "message": "Wrong value: (" + e.value + ") is not valid product id."
-                };
-            }else{
-                err = {
-                    "status": 0,
-                    "message": "error hanppen while query products data."
-                };
-            }
-            return callback(err)
-        });
+                    let bill = [];
+                    let totalPrice = 0;
+                    products.map((singleProduct) => {
+                        var newMapObj = {...singleProduct.map};
+                        newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
+                        finalProductsQuantityMap[singleProduct._id] = newMapObj;
+                        let single_final_price;
+                        if(full_obj_by_id[singleProduct._id].final_price && !isNaN(full_obj_by_id[singleProduct._id].final_price)){
+                            single_final_price = full_obj_by_id[singleProduct._id].final_price
+                        }else{
+                            single_final_price = singleProduct.price
+                        }
+                        bill.push({
+                            "_id": singleProduct._id,
+                            "name": singleProduct.name,
+                            "quantity": productsQuantityMap[singleProduct._id.toString()],
+                            "price": single_final_price,
+                            "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price
+                        })
+                        totalPrice += productsQuantityMap[singleProduct._id.toString()] * single_final_price;
+                    })
+                    body.bill = bill;
+                    body.subTotal = totalPrice;
+                    body.finalProductsQuantityMap = finalProductsQuantityMap;
+                    if(!fountError){return callback(null);}
+                }
+            },(e) => {
+                fountError = true;
+                let err;
+                if(e.name && e.name == 'CastError'){
+                    err = {
+                        "status": 0,
+                        "message": "Wrong value: (" + e.value + ") is not valid product id."
+                    };
+                }else{
+                    err = {
+                        "status": 0,
+                        "message": "error hanppen while query products data."
+                    };
+                }
+                return callback(err)
+            });
 
+    }else{
+        body.bill = [];
+        body.subTotal = 0;
+        return callback(null)
+    }
 }
 async function checkCustomProductsAvailability(body, callback){
     let fountError = false;
@@ -464,43 +477,47 @@ async function checkCustomProductsAvailability(body, callback){
     }
 }
 var productsFormatCheck = (body, callback) => {
-    let fountError = false;
-    if(typeof(body.products[0]) !== 'object'){
-        fountError = true;
-        let err = {
-            "status": 0,
-            "message": "Wrong data (products) must be array of objects."
+    if(body.products){
+        let fountError = false;
+        if(typeof(body.products[0]) !== 'object'){
+            fountError = true;
+            let err = {
+                "status": 0,
+                "message": "Wrong data (products) must be array of objects."
+            }
+            return callback(err);
+        }else{
+            body.products.map((product)=>{
+                if(!product.product_id){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "each object inside products must have (product_id) field."
+                    }
+                    return callback(err);
+                }
+                if(!product.quantity || isNaN(product.quantity)){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "each object inside products must have (quantity) field with numeric value."
+                    }
+                    return callback(err);
+                }
+                if(product.final_price && (isNaN(product.final_price) || product.final_price < 0)){
+                    fountError = true;
+                    let err = {
+                        "status": 0,
+                        "message": "final_price must be positive numeric value."
+                    }
+                    return callback(err);
+                }
+            })
         }
-        return callback(err);
+        if(!fountError){return callback(null);}
     }else{
-        body.products.map((product)=>{
-            if(!product.product_id){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "each object inside products must have (product_id) field."
-                }
-                return callback(err);
-            }
-            if(!product.quantity || isNaN(product.quantity)){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "each object inside products must have (quantity) field with numeric value."
-                }
-                return callback(err);
-            }
-            if(product.final_price && (isNaN(product.final_price) || product.final_price < 0)){
-                fountError = true;
-                let err = {
-                    "status": 0,
-                    "message": "final_price must be positive numeric value."
-                }
-                return callback(err);
-            }
-        })
+        return callback(null);
     }
-    if(!fountError){return callback(null);}
 }
 var custom_productsFormatCheck = (body, callback) => {
     let fountError = false;
@@ -549,9 +566,11 @@ function updateOneCustomProduct(product_id) {
     });
 }
 async function removeProducts(body, callback) {
-    Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
-        updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
-    })
+    if(body.products){
+        Object.keys(body.finalProductsQuantityMap).map((product_id)=>{
+            updateOneProduct(product_id,body.finalProductsQuantityMap[product_id]);
+        })
+    }
     callback(null);
 }
 async function addProducts(productsArr, parent_id, branch_id, callback) {
