@@ -324,6 +324,7 @@ var createProductGroup = (res,body) => {
             mapObj[body.branch_id] = Number(body.quantity);
             let finalProduct = {
                 "_id": newProductGroup._id,
+                "is_material": body.is_material,
                 "group_id": newProductGroup._id,
                 "name": body.name,
                 "price": body.price,
@@ -345,7 +346,7 @@ var createProductGroup = (res,body) => {
             if(e.code == 11000){
                 res.status(400).send({
                     "status": 0,
-                    "message": e
+                    "message": "you have product with the same id"
                 });
             }else{
                 res.status(400).send({
