@@ -1587,6 +1587,9 @@ router.get('/list', authenticate, function(req, res, next) {
         }
         if(req.query._id){filters._id = req.query._id}
         if(req.query.canceled){filters.canceled = req.query.canceled}
+        if(req.query.returned){filters.returned = req.query.returned}
+        if(req.query.creator_id){filters.creator_id = req.query.creator_id}
+        if(req.query.customer_phoneNumber){filters.customer_phoneNumber = req.query.customer_phoneNumber}
         if(req.query.branch_id){filters.branch_id = req.query.branch_id}
         if(req.query.createdDateFrom){
             if(new Date(req.query.createdDateFrom) == "Invalid Date"){
