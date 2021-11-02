@@ -1667,4 +1667,45 @@ router.get('/bill', function(req, res, next){
         });
     }
 });
+router.get('/summary', authenticate, function(req, res, next){
+    let user = req.user;
+    let body = _.pick(req.body, ['date_from','date_to']);
+    if(req.user.type == 'admin'){
+        body.parent = req.user._id;
+    }else if(req.user.type == 'staff'){
+        body.parent = req.user.parent;
+    }
+    let filters = { parent: body.parent };
+    Order.find(filters)
+    .then((orders) => {
+        let total_success_amount = 0;
+        let total_count = 0;
+        let total_success_count = 0;
+        let total_canceled_count = 0;
+        let total_returned_count = 0;
+        orders.map((order)=>{
+            total_count += 1;
+            if(order.canceled){
+                total_canceled_count += 1;
+            }else if(order.returned){
+                total_returned_count += 1;
+            }else{
+                total_success_amount += order.total;
+                total_success_count += 1;
+            }
+        })
+
+        return res.send({
+            "total_success_amount": total_success_amount,
+            "total_count": total_count,
+            "total_success_count": total_success_count,
+            "total_canceled_count": total_canceled_count,
+            "total_returned_count": total_returned_count
+        });
+    },(e) => {
+        res.status(400).send({
+            "message": "error happen while calc orders summary."
+        });
+    });
+});
 module.exports = router;
