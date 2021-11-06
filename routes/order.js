@@ -867,6 +867,11 @@ router.post('/cancel', authenticate, function(req, res, next) {
                                 "status": 0,
                                 "message": "This order is already canceled."
                             });
+                        }else if(order.type == "Return"){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "Can't cancel Return order."
+                            });
                         }else if(order.returned){
                             res.status(400).send({
                                 "status": 0,
@@ -1041,7 +1046,8 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                                             "prevOrderTotal": order.total,
                                                                                                             "subTotal": body.subTotal.toFixed(2),
                                                                                                             "total": body.total.toFixed(2),
-                                                                                                            "returnAmount": body.returnAmount.toFixed(2),
+                                                                                                            "amount_out": body.amount_out.toFixed(2),
+                                                                                                            "amount_in": body.amount_in.toFixed(2),
                                                                                                             "discountValue": body.discountValue.toFixed(2),
                                                                                                             "promo": body.promo,
                                                                                                             "createdDate": new Date(),
@@ -1206,9 +1212,11 @@ var checkNewProductsAvailability = (body, newProducts, callback) => {
     let productsArr = [];
     let productsQuantityMap = {};
     let finalProductsQuantityMap = {};
+    let full_obj_by_id = {};
     newProducts.map((product)=>{
         productsArr.push(product.product_id)
         productsQuantityMap[product.product_id] = product.quantity;
+        full_obj_by_id[product.product_id] = product;
     })
     Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
         .then((products) => {
@@ -1235,15 +1243,21 @@ var checkNewProductsAvailability = (body, newProducts, callback) => {
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
                     newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
-                    finalProductsQuantityMap[singleProduct._id] = newMapObj
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj;
+                    let single_final_price;
+                    if(full_obj_by_id[singleProduct._id].final_price && !isNaN(full_obj_by_id[singleProduct._id].final_price)){
+                        single_final_price = full_obj_by_id[singleProduct._id].final_price
+                    }else{
+                        single_final_price = singleProduct.price
+                    }
                     bill.push({
                         "_id": singleProduct._id,
                         "name": singleProduct.name,
                         "quantity": productsQuantityMap[singleProduct._id.toString()],
-                        "price": singleProduct.price,
-                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
+                        "price": single_final_price,
+                        "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price
                     })
-                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
+                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * single_final_price;
                 })
                 body.newProductsBill = bill;
                 body.newProductsSubTotal = totalPrice;
@@ -1272,8 +1286,10 @@ var checkRemovedProducts = (removedProducts, orderProducts, callback) => {
     let fountError = false;
     let remainderProducts = [];
     let orderProductsMap = {};
+    let full_obj_by_id = {};
     orderProducts.map((product)=>{
         orderProductsMap[product.product_id] = product.quantity;
+        full_obj_by_id[product.product_id] = product;
     })
     removedProducts.map((removedProduct)=>{
         if(!orderProductsMap[removedProduct.product_id]){
@@ -1298,7 +1314,11 @@ var checkRemovedProducts = (removedProducts, orderProducts, callback) => {
     })
     Object.keys(orderProductsMap).map((key)=>{
         if(orderProductsMap[key] != 0){
-            remainderProducts.push({"product_id": key, "quantity": orderProductsMap[key]})
+            if(full_obj_by_id[key].final_price){
+                remainderProducts.push({"product_id": key, "quantity": orderProductsMap[key], "final_price": full_obj_by_id[key].final_price})
+            }else{
+                remainderProducts.push({"product_id": key, "quantity": orderProductsMap[key]})
+            }
         }
     })
     if(!fountError){return callback(null,remainderProducts);}
@@ -1307,9 +1327,11 @@ var remainderProductsBill = (body, newProducts, callback) => {
     let fountError = false;
     let productsArr = [];
     let productsQuantityMap = {};
+    let full_obj_by_id = {};
     newProducts.map((product)=>{
         productsArr.push(product.product_id)
         productsQuantityMap[product.product_id] = product.quantity;
+        full_obj_by_id[product.product_id] = product;
     })
     Product.find({'_id': { $in: productsArr}, 'parent': body.parent})
         .then((products) => {
@@ -1325,15 +1347,21 @@ var remainderProductsBill = (body, newProducts, callback) => {
                 let totalPrice = 0;
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
-                    newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()]
+                    newMapObj[body.branch_id] -= productsQuantityMap[singleProduct._id.toString()];
+                    let single_final_price;
+                    if(full_obj_by_id[singleProduct._id].final_price && !isNaN(full_obj_by_id[singleProduct._id].final_price)){
+                        single_final_price = full_obj_by_id[singleProduct._id].final_price
+                    }else{
+                        single_final_price = singleProduct.price
+                    }
                     bill.push({
                         "_id": singleProduct._id,
                         "name": singleProduct.name,
                         "quantity": productsQuantityMap[singleProduct._id.toString()],
-                        "price": singleProduct.price,
-                        "total": productsQuantityMap[singleProduct._id.toString()] * singleProduct.price
+                        "price": single_final_price,
+                        "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price
                     })
-                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * singleProduct.price;
+                    totalPrice += productsQuantityMap[singleProduct._id.toString()] * single_final_price;
                 })
                 body.remainderProductsBill = bill;
                 body.remainderProductsSubTotal = totalPrice;
@@ -1365,17 +1393,18 @@ async function removeNewProducts(body, callback) {
 }
 var noPromoCalac = (body, paidAmount, callback) => {
     //no promo
-    body.discountValue = 0;
-    let total,returnAmount;
+    let amount_out,amount_in;
     if(paidAmount - body.subTotal < 0){
-        total = Math.abs(paidAmount - body.subTotal);
-        returnAmount = 0;
+        amount_in = Math.abs(paidAmount - body.subTotal);
+        amount_out = 0;
     }else{
-        total = 0;
-        returnAmount = Math.abs(paidAmount - body.subTotal);
+        amount_in = 0;
+        amount_out = Math.abs(paidAmount - body.subTotal);
     }
-    body.total = total;
-    body.returnAmount = returnAmount;
+    body.discountValue = 0;
+    body.total = body.subTotal;
+    body.amount_out = amount_out;
+    body.amount_in = amount_in;
     callback(null);
 }
 var checkReturnPromo = (body,paidAmount, callback) => {
@@ -1491,30 +1520,36 @@ var calcReturnBillDiscount = (total, promo, body, paidAmount, callback) => {
             body.promo_id = promo._id;
             body.discountValue = promo.discountValue;
 
-            let totalAmount,returnAmount;
+            let totalAmount,amount_out,amount_in;
             if((paidAmount + body.discountValue) - body.subTotal < 0){
-                totalAmount = Math.abs((paidAmount + body.discountValue) - body.subTotal);
-                returnAmount = 0;
+                totalAmount = Math.abs(body.subTotal - body.discountValue);
+                amount_in = Math.abs((paidAmount + body.discountValue) - body.subTotal);
+                amount_out = 0;
             }else{
-                totalAmount = 0;
-                returnAmount = Math.abs((paidAmount + body.discountValue) - body.subTotal);
+                totalAmount = Math.abs(body.subTotal - body.discountValue);
+                amount_in = 0;
+                amount_out = Math.abs((paidAmount + body.discountValue) - body.subTotal);
             }
             body.total = totalAmount;
-            body.returnAmount = returnAmount;
+            body.amount_in = amount_in;
+            body.amount_out = amount_out;
             callback(null);
         }else if(promo.discountType == "PERCENTAGE"){
             body.promo_name = promo.name;
             body.discountValue = total * (promo.discountValue/100);
-            let totalAmount,returnAmount;
+            let totalAmount,amount_out,amount_in;
             if((paidAmount + body.discountValue) - body.subTotal < 0){
-                totalAmount = Math.abs((paidAmount + body.discountValue) - body.subTotal);
-                returnAmount = 0;
+                totalAmount = Math.abs(body.subTotal - body.discountValue);
+                amount_in = Math.abs((paidAmount + body.discountValue) - body.subTotal);
+                amount_out = 0;
             }else{
-                totalAmount = 0;
-                returnAmount = Math.abs((paidAmount + body.discountValue) - body.subTotal);
+                totalAmount = Math.abs(body.subTotal - body.discountValue);
+                amount_in = 0;
+                amount_out = Math.abs((paidAmount + body.discountValue) - body.subTotal);
             }
             body.total = totalAmount;
-            body.returnAmount = returnAmount;
+            body.amount_in = amount_in;
+            body.amount_out = amount_out;
             callback(null);
         }else{
             callback("Wrong discountType value.")
@@ -1707,11 +1742,15 @@ router.get('/summary', authenticate, function(req, res, next){
                     total_count += 1;
                     if(order.canceled){
                         total_canceled_count += 1;
-                    }else if(order.returned){
-                        total_returned_count += 1;
                     }else{
-                        total_success_amount += order.total;
-                        total_success_count += 1;
+                        if(order.type == "Return"){
+                            total_success_amount -= order.amount_out;
+                            total_success_amount += order.amount_in;
+                            total_returned_count += 1;
+                        }else{
+                            total_success_amount += order.total;
+                            total_success_count += 1;
+                        }
                     }
                 })
         

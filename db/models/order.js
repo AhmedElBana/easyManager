@@ -29,7 +29,8 @@ let OrderSchema = new mongoose.Schema({
 	prevOrderSubTotal: { type: Number , min: 0},
 	prevOrderDiscountValue: { type: Number , min: 0},
 	prevOrderTotal: { type: Number , min: 0},
-	returnAmount: { type: Number , min: 0},
+	amount_out: { type: Number , min: 0},
+	amount_in: { type: Number , min: 0},
 	returnNote: { type: String, trim: true },
 	parent: { type: String, trim: true, required: true },
 });
@@ -37,7 +38,7 @@ let OrderSchema = new mongoose.Schema({
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','type','customer_id','customer_name','customer_phoneNumber','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','returnAmount','total','promo','promo_id','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','returnNote','parent']);
+	return _.pick(OrderObject, ['_id','type','customer_id','customer_name','customer_phoneNumber','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','amount_out','amount_in','total','promo','promo_id','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','returnNote','parent']);
 }
 
 OrderSchema.plugin(mongoosePaginate);
