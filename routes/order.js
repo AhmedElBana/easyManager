@@ -82,6 +82,8 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                                         "bill": body.bill,
                                                                                         "subTotal": body.subTotal.toFixed(2),
                                                                                         "total": body.total.toFixed(2),
+                                                                                        "amount_in": body.total.toFixed(2),
+                                                                                        "amount_out": 0,
                                                                                         "promo": body.promo,
                                                                                         "discountValue": body.discountValue.toFixed(2),
                                                                                         "createdDate": new Date(),
@@ -1743,12 +1745,11 @@ router.get('/summary', authenticate, function(req, res, next){
                     if(order.canceled){
                         total_canceled_count += 1;
                     }else{
+                        total_success_amount -= order.amount_out;
+                        total_success_amount += order.amount_in;
                         if(order.type == "Return"){
-                            total_success_amount -= order.amount_out;
-                            total_success_amount += order.amount_in;
                             total_returned_count += 1;
                         }else{
-                            total_success_amount += order.total;
                             total_success_count += 1;
                         }
                     }
