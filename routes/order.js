@@ -69,67 +69,61 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                         if(err !== null){
                                                                             return res.status(400).send(err);
                                                                         }else{
-                                                                            updateCustomProducts(body, function(err){
-                                                                                if(err !== null){
-                                                                                    return res.status(400).send(err);
-                                                                                }else{
-                                                                                    //create the order
-                                                                                    let orderObj = {
-                                                                                        "type": "Order",
-                                                                                        "customer_id": customer._id,
-                                                                                        "customer_name": customer.name,
-                                                                                        "customer_phoneNumber": customer.phoneNumber,
-                                                                                        "bill": body.bill,
-                                                                                        "subTotal": body.subTotal.toFixed(2),
-                                                                                        "total": body.total.toFixed(2),
-                                                                                        "amount_in": body.total.toFixed(2),
-                                                                                        "amount_out": 0,
-                                                                                        "promo": body.promo,
-                                                                                        "discountValue": body.discountValue.toFixed(2),
-                                                                                        "createdDate": new Date(),
-                                                                                        "branch_id": body.branch_id,
-                                                                                        "creator_id": req.user._id,
-                                                                                        "canceled": false,
-                                                                                        "returned": false,
-                                                                                        "parent": body.parent
-                                                                                    }
-                                                                                    if(body.promoData){
-                                                                                        orderObj.promo_id = body.promoData._id;
-                                                                                    }
-                                                                                    if(body.products){
-                                                                                        orderObj.products = body.products;
-                                                                                    }
-                                                                                    if(body.custom_products){
-                                                                                        orderObj.custom_products = body.custom_products;
-                                                                                    }
-                                                                                    let newOrderData = new Order(orderObj);
-                                                                                    newOrderData.save().then((finalNewOrder) => {
-                                                                                        single_sms(
-                                                                                            finalNewOrder.parent,
-                                                                                            "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit https://tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
-                                                                                            customer.phoneNumber,
-                                                                                            function(error, data){
-                                                                                                if (error){
-                                                                                                    return res.status(201).send({
-                                                                                                        "sms": "fail",
-                                                                                                        "data": finalNewOrder
-                                                                                                    });
-                                                                                                }else{
-                                                                                                    return res.status(201).send({
-                                                                                                        "sms": "success",
-                                                                                                        "data": finalNewOrder
-                                                                                                    });
-                                                                                                }
+                                                                            //create the order
+                                                                            let orderObj = {
+                                                                                "type": "Order",
+                                                                                "customer": customer._id,
+                                                                                "bill": body.bill,
+                                                                                "subTotal": body.subTotal.toFixed(2),
+                                                                                "total": body.total.toFixed(2),
+                                                                                "amount_in": body.total.toFixed(2),
+                                                                                "amount_out": 0,
+                                                                                "promo": body.promo,
+                                                                                "discountValue": body.discountValue.toFixed(2),
+                                                                                "createdDate": new Date(),
+                                                                                "branch_id": body.branch_id,
+                                                                                "creator_id": req.user._id,
+                                                                                "canceled": false,
+                                                                                "returned": false,
+                                                                                "parent": body.parent
+                                                                            }
+                                                                            if(body.promoData){
+                                                                                orderObj.promo_id = body.promoData._id;
+                                                                            }
+                                                                            if(body.products){
+                                                                                orderObj.products = body.products;
+                                                                            }
+                                                                            if(body.custom_products){
+                                                                                orderObj.custom_products = body.custom_products;
+                                                                            }
+                                                                            let newOrderData = new Order(orderObj);
+                                                                            newOrderData.save().then((finalNewOrder) => {
+                                                                                updateCustomProducts(body, finalNewOrder, function(err){
+                                                                                    single_sms(
+                                                                                        finalNewOrder.parent,
+                                                                                        "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit https://tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
+                                                                                        customer.phoneNumber,
+                                                                                        function(error, data){
+                                                                                            if (error){
+                                                                                                return res.status(201).send({
+                                                                                                    "sms": "fail",
+                                                                                                    "data": finalNewOrder
+                                                                                                });
+                                                                                            }else{
+                                                                                                return res.status(201).send({
+                                                                                                    "sms": "success",
+                                                                                                    "data": finalNewOrder
+                                                                                                });
                                                                                             }
-                                                                                        )
-                                                                                    }).catch((e) => {
-                                                                                        return res.status(400).send({
-                                                                                            "status": 0,
-                                                                                            "message": e
-                                                                                        });
-                                                                                    });
-                                                                                }
-                                                                            })
+                                                                                        }
+                                                                                    )
+                                                                                })
+                                                                            }).catch((e) => {
+                                                                                return res.status(400).send({
+                                                                                    "status": 0,
+                                                                                    "message": e
+                                                                                });
+                                                                            });
                                                                         }
                                                                     })
                                                                 }
@@ -546,17 +540,21 @@ var custom_productsFormatCheck = (body, callback) => {
     }
     if(!fountError){return callback(null);}
 }
-async function updateCustomProducts(body, callback) {
+async function updateCustomProducts(body, finalNewOrder, callback) {
     if(body.custom_products){
         body.custom_products.map((product)=>{
-            updateOneCustomProduct(product.product_id, "assigned");
+            updateOneCustomProduct(product.product_id, finalNewOrder);
         })
     }
     callback(null);
 }
-function updateOneCustomProduct(product_id, state) { 
+function updateOneCustomProduct(product_id, finalNewOrder) { 
     return new Promise(resolve => {
-        let updateBody = {"status": state};
+        let updateBody = {
+            "status": "assigned",
+            "order": finalNewOrder._id,
+            "customer": finalNewOrder.customer
+        };
         let query = {_id: product_id};
         Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
             if(e){
@@ -1038,9 +1036,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                                         //create the return
                                                                                                         let orderObj = {
                                                                                                             "type": "Return",
-                                                                                                            "customer_id": order.customer_id,
-                                                                                                            "customer_name": order.customer_name,
-                                                                                                            "customer_phoneNumber": order.customer_phoneNumber,
+                                                                                                            "customer": order.customer_id,
                                                                                                             "products": body.products,
                                                                                                             "bill": body.bill,
                                                                                                             "prevOrderSubTotal": order.subTotal,
@@ -1612,6 +1608,11 @@ router.get('/list', authenticate, function(req, res, next) {
             page: page,
             limit: page_size,
             sort: { createdDate: -1 },
+            populate: [
+                { path: 'customer', select: ['name', 'phoneNumber'] },
+                { path: 'branch_id', select: ['name', 'phoneNumber', 'address', 'type'] },
+                { path: 'creator_id', select: ['name', 'email'] }
+            ],
             collation: {
             locale: 'en'
             }

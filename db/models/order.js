@@ -4,12 +4,11 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let OrderSchema = new mongoose.Schema({
 	type: { type: String, trim: true, required: true, enum: ['Order','Return']},
-	customer_id: { type: String, required: true, minlenght: 2, trim: true },
-	customer_name: {type: String,required: true,minlenght: 2,trim: true},
-	customer_phoneNumber: {type: String,trim: true,required: true},
+	customer: {type: ObjectId, ref: 'Customer'},
 	products: { type: Array },
 	custom_products: { type: Array },
 	bill: { type: Array, required: true },
@@ -19,8 +18,8 @@ let OrderSchema = new mongoose.Schema({
 	promo_id: { type: String, minlenght: 2, trim: true },
 	discountValue: { type: Number, min: 0, required: true },
 	createdDate: { type: Date, required: true, trim: true },
-	branch_id: { type: String, required: true, minlenght: 2, trim: true },
-	creator_id: { type: String, trim: true, required: true },
+	branch_id: {type: ObjectId, ref: 'Branch'},
+	creator_id: {type: ObjectId, ref: 'User'},
 	canceled: { type: Boolean, required: true },
 	canceledDate: { type: Date, trim: true },
 	returned: { type: Boolean, required: true },
@@ -38,7 +37,7 @@ let OrderSchema = new mongoose.Schema({
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','type','customer_id','customer_name','customer_phoneNumber','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','amount_out','amount_in','total','promo','promo_id','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','returnNote','parent']);
+	return _.pick(OrderObject, ['_id','type','customer','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','amount_out','amount_in','total','promo','promo_id','createdDate','branch_id','creator_id','canceled','canceledDate','returned','returnedDate','parentOrder','returnNote','parent']);
 }
 
 OrderSchema.plugin(mongoosePaginate);

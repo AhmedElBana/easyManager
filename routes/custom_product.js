@@ -452,6 +452,15 @@ router.get('/list', authenticate, function(req, res, next) {
             page: page,
             limit: page_size,
             sort: { createdAt: -1 },
+            populate: [
+                { path: 'customer', select: ['name', 'phoneNumber'] },
+                { path: 'branch', select: ['name', 'phoneNumber', 'address', 'type'] },
+                { path: 'materials_branch', select: ['name', 'phoneNumber', 'address', 'type'] },
+                { path: 'created_from', select: ['name', 'email'] },
+                { path: 'accepted_from', select: ['name', 'email'] },
+                { path: 'ready_from', select: ['name', 'email'] },
+                { path: 'delivered_from', select: ['name', 'email'] }
+            ],
             collation: {
             locale: 'en'
             }
