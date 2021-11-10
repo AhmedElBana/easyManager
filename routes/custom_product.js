@@ -477,6 +477,33 @@ router.get('/list', authenticate, function(req, res, next) {
         if(req.query.name){
             filters.name={ $regex: new RegExp(req.query.name), $options: "i" }
         }
+        if(req.query.status){filters.status = req.query.status}
+        if(req.query.creator_id){filters.created_from = req.query.creator_id}
+        if(req.query.branch_id){filters.branch = req.query.branch_id}
+        if(req.query.createdDateFrom){
+            if(new Date(req.query.createdDateFrom) == "Invalid Date"){
+                errHappen = true;
+                err = {
+                    "status": 0,
+                    "message": "Invalid createdDateFrom."
+                }
+            }
+            filters.created_at = {$gte: new Date(req.query.createdDateFrom)}
+        }
+        if(req.query.createdDateTo){
+            if(new Date(req.query.createdDateTo) == "Invalid Date"){
+                errHappen = true;
+                err = {
+                    "status": 0,
+                    "message": "Invalid createdDateTo."
+                }
+            }
+            if(req.query.createdDateFrom){
+                filters.created_at = {$gte: new Date(req.query.createdDateFrom), $lte: new Date(req.query.createdDateTo)}
+            }else{
+                filters.created_at = {$lte: new Date(req.query.createdDateTo)}
+            }
+        }
         if(errHappen){
             res.status(400).send(err);
         }else{
