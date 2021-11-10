@@ -16,6 +16,7 @@ var transferRouter = require('./routes/transfer')
 var orderRouter = require('./routes/order')
 var promoRouter = require('./routes/promo')
 var customerRouter = require('./routes/customer')
+var storeRouter = require('./routes/store')
 
 var app = express();
 
@@ -53,5 +54,6 @@ app.use('/api/transfer', transferRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/promo', promoRouter);
 app.use('/api/customer', customerRouter)
+app.use('/api/store', storeRouter)
 
 module.exports = app;
