@@ -530,4 +530,77 @@ router.get('/list', authenticate, function(req, res, next) {
         }
     }
 });
+router.get('/full_details', authenticate, function(req, res, next){
+    if(!req.query._id){
+        res.status(400).send({
+            "status": 0,
+            "message": "Missing data, (_id) field is required."
+        });
+    }else{
+        let filters = {_id: req.query._id}
+        if(req.user.type == 'admin'){
+            filters.parent = req.user._id;
+        }else if(req.user.type == 'staff'){
+            filters.parent = req.user.parent;
+        }
+        Custom_product.findOne(filters)
+        .populate('branch', ['name', 'phoneNumber','address','type'])
+        .populate('materials_branch', ['name','phoneNumber','address','type'])
+        .populate('customer', ['name','phoneNumber'])
+        .populate('created_from', ['name','phoneNumber'])
+        .populate('accepted_from', ['name','phoneNumber'])
+        .populate('ready_from', ['name','phoneNumber'])
+        .populate('delivered_from', ['name','phoneNumber'])
+        .then((custom_product) => {
+            if(!custom_product){
+                res.status(400).send({
+                    "message": "can't find any custom_product with this _id."
+                });
+            }else{
+                let productsArr = [];
+                let productsFinal_obj = {};
+                for (var key in custom_product.materials) {
+                    productsArr.push(key)
+                    productsFinal_obj[key] = {"used_quantity": custom_product.materials[key]}
+                }
+                Product.find({'_id': { $in: productsArr}, 'parent': filters.parent})
+                    .then((products) => {
+                        if(products.length !== productsArr.length){
+                            res.status(400).send({
+                                "message": "Wrong data: can't find some custom products, please check (product_id) for each custom product."
+                            });
+                        }else{
+                            products.map((singleProduct) => {
+                                productsFinal_obj[singleProduct._id]["full_data"] = singleProduct
+                            })
+                            return res.send({
+                                "data": {...custom_product._doc, 'materials_details': productsFinal_obj}
+                            });
+                        }
+                    },(e) => {
+                        let err;
+                        if(e.name && e.name == 'CastError'){
+                            err = {
+                                "status": 0,
+                                "message": "Wrong value: (" + e.value + ") is not valid custom product id."
+                            };
+                        }else{
+                            err = {
+                                "status": 0,
+                                "message": "error hanppen while query custom products data."
+                            };
+                        }
+                        res.status(400).send({
+                            err
+                        });
+                    });
+            }
+        },(e) => {
+            res.status(400).send({
+                "message": "can't find any custom_product with this _id."
+            });
+        });
+    }
+});
+
 module.exports = router;
