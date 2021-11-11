@@ -245,6 +245,11 @@ router.get('/list', authenticate, function(req, res, next) {
             page: page,
             limit: page_size,
             sort: { createdAt: -1 },
+            populate: [
+                { path: 'source_id', select: ['name', 'phoneNumber', 'address', 'type'] },
+                { path: 'target_id', select: ['name', 'phoneNumber', 'address', 'type'] },
+                { path: 'creator_id', select: ['name', 'email'] }
+            ],
             collation: {
             locale: 'en'
             }

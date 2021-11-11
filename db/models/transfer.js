@@ -4,24 +4,12 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let TransferSchema = new mongoose.Schema({
-	creator_id: {
-		type: String,
-		trim: true,
-		required: true
-	},
-	source_id: {
-		type: String,
-		required: true,
-		minlenght: 2,
-		trim: true
-	},
-	target_id: {
-		type: String,
-		trim: true,
-		required: true
-	},
+	creator_id: {type: ObjectId, ref: 'User'},
+	source_id: {type: ObjectId, ref: 'Branch'},
+	target_id: {type: ObjectId, ref: 'Branch'},
 	products: {
 		type: Array,
 		required: true
