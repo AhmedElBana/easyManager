@@ -36,11 +36,6 @@ let TransferSchema = new mongoose.Schema({
 		required: true,
 		trim: true
 	},
-	expectedDeliveryTime: {
-		type: Date,
-		required: true,
-		trim: true
-	},
 	status: {
 		// inProgress/canceled/completed
 		type: String,
@@ -60,7 +55,7 @@ let TransferSchema = new mongoose.Schema({
 TransferSchema.methods.toJSON = function(){
 	let Transfer = this;
 	let TransferObject = Transfer.toObject();
-	return _.pick(TransferObject, ['_id','creator_id','source_id','target_id','products','createdAt','lastUpdate','expectedDeliveryTime','status','actionsMap','parent']);
+	return _.pick(TransferObject, ['_id','creator_id','source_id','target_id','products','createdAt','lastUpdate','status','actionsMap','parent']);
 }
 
 TransferSchema.plugin(mongoosePaginate);

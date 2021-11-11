@@ -14,11 +14,11 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new transfer."
         });
     }else{
-        let body = _.pick(req.body, ['source_id','target_id','products','expectedDeliveryTime']);
-        if(!body.source_id || !body.target_id || !body.products || !body.expectedDeliveryTime){
+        let body = _.pick(req.body, ['source_id','target_id','products']);
+        if(!body.source_id || !body.target_id || !body.products){
             res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (source_id, target_id, products, expectedDeliveryTime) fields are required."
+                "message": "Missing data, (source_id, target_id, products) fields are required."
             });
         }else{
             body.creator_id = req.user._id;
@@ -31,51 +31,43 @@ router.post('/create', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            if(new Date(body.expectedDeliveryTime)  == 'Invalid Date'){
-                res.status(400).send({
-                    "status": 0,
-                    "message": "Wrong data: (expectedDeliveryTime) must be valid date."
-                });
-            }else{
-                body.expectedDeliveryTime = new Date(body.expectedDeliveryTime);
-                checkBranches(body,function(err){
-                    if(err !== null){
-                        res.status(400).send(err);
-                    }else{
-                        checkProductsFormat(body, function(err){
-                            if(err !== null){
-                                res.status(400).send(err);
-                            }else{
-                                checkProductsAvailability(body, function(err){
-                                    if(err !== null){
-                                        res.status(400).send(err);
-                                    }else{
-                                        removeProducts(body, function(err){
-                                            if(err !== null){
-                                                res.status(400).send(err);
-                                            }else{
-                                                //create the transfer
-                                                let newTransferData = new Transfer(body);
-                                                newTransferData.save().then((newTransfer) => {                
-                                                    return res.status(201).send({
-                                                        "status": 1,
-                                                        "data": {"transferData": newTransfer}
-                                                    });
-                                                }).catch((e) => {
-                                                    res.status(400).send({
-                                                        "status": 0,
-                                                        "message": e
-                                                    });
+            checkBranches(body,function(err){
+                if(err !== null){
+                    res.status(400).send(err);
+                }else{
+                    checkProductsFormat(body, function(err){
+                        if(err !== null){
+                            res.status(400).send(err);
+                        }else{
+                            checkProductsAvailability(body, function(err){
+                                if(err !== null){
+                                    res.status(400).send(err);
+                                }else{
+                                    removeProducts(body, function(err){
+                                        if(err !== null){
+                                            res.status(400).send(err);
+                                        }else{
+                                            //create the transfer
+                                            let newTransferData = new Transfer(body);
+                                            newTransferData.save().then((newTransfer) => {                
+                                                return res.status(201).send({
+                                                    "status": 1,
+                                                    "data": {"transferData": newTransfer}
                                                 });
-                                            }
-                                        })
-                                    }
-                                })
-                            }
-                        })
-                    }
-                });
-            }
+                                            }).catch((e) => {
+                                                res.status(400).send({
+                                                    "status": 0,
+                                                    "message": e
+                                                });
+                                            });
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    })
+                }
+            });
         }
     }
 });
