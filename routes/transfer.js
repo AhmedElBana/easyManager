@@ -369,11 +369,18 @@ var checkProductsAvailability = (body, callback) => {
                         return callback(err)
                     }
                 })
+                let final_products = [];
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
                     newMapObj[body.source_id] -= productsQuantityMap[singleProduct._id.toString()]
                     finalProductsQuantityMap[singleProduct._id] = newMapObj
+                    final_products.push({
+                        "product_id": singleProduct._id,
+                        "quantity": productsQuantityMap[singleProduct._id.toString()],
+                        "name": singleProduct.name
+                    })
                 })
+                body.products = [...final_products];
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
                 if(!fountError){return callback(null);}
             }
