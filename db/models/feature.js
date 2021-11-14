@@ -16,6 +16,10 @@ let FeatureSchema = new mongoose.Schema({
 		required: true,
 		type: Array
 	},
+	for_custom_products: {
+		type: Boolean
+		default: false
+	},
 	parent: {
 		required: true,
 		type: String,
