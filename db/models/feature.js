@@ -34,7 +34,7 @@ let FeatureSchema = new mongoose.Schema({
 FeatureSchema.methods.toJSON = function(){
 	let Feature = this;
 	let FeatureObject = Feature.toObject();
-	return _.pick(FeatureObject, ['_id','name','options','parent','active']);
+	return _.pick(FeatureObject, ['_id','name','options','for_custom_products','parent','active']);
 }
 
 FeatureSchema.plugin(mongoosePaginate);
