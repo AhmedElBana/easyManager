@@ -12,7 +12,7 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new feature."
         });
     }else{
-        let body = _.pick(req.body, ['name','options']);
+        let body = _.pick(req.body, ['name','options','for_custom_products']);
         if(!body.name){
             res.status(400).send({
                 "status": 0,
@@ -71,7 +71,7 @@ router.post('/edit', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to edit feature."
         });
     }else{
-        let body = _.pick(req.body, ['feature_id','name','options','active']);
+        let body = _.pick(req.body, ['feature_id','name','options','for_custom_products','active']);
         if(!body.feature_id){
             res.status(400).send({
                 "status": 0,
@@ -83,6 +83,7 @@ router.post('/edit', authenticate, function(req, res, next) {
             if(req.body.name){updateBody.name = req.body.name}
             if(req.body.options){updateBody.options = req.body.options.split(",")}
             if(req.body.active){updateBody.active = req.body.active}
+            if(req.body.for_custom_products){updateBody.for_custom_products = req.body.for_custom_products}
 
             let query;
             if(req.user.type == 'admin'){
@@ -146,6 +147,7 @@ router.get('/list', authenticate, function(req, res, next) {
     }else if(req.user.type == 'staff'){
         filters = {parent: req.user.parent};
     }
+    if(req.query.for_custom_products){filters.for_custom_products = req.query.for_custom_products}
     Feature.paginate(filters, options, function(err, result) {
         let next;
         if(result.hasNextPage){
