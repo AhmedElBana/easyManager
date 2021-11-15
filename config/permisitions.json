@@ -29,5 +29,10 @@
     "127":"can view promo",
     "128":"can create promo",
     "129":"can activate promo",
-    "130":"can deactivate promo"
+    "130":"can deactivate promo",
+    "131":"can view custom product",
+    "132":"can view full custom product",
+    "133":"can create custom product",
+    "134":"can edit custom product",
+    "135":"can edit full custom product"
 }

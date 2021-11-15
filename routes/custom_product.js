@@ -39,7 +39,7 @@ var upload = multer({
 });
 /* create Custom_product. */
 router.post('/create', authenticate, upload.array('image', 50), function(req, res, next) {
-    if(!req.user.permissions.includes('116')){
+    if(!req.user.permissions.includes('133')){
         res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to create new custom product."
@@ -436,7 +436,7 @@ function deleteFiles(files, callback){
 }
 /* list Custom_products. */
 router.get('/list', authenticate, function(req, res, next) {
-    if(!req.user.permissions.includes('115')){
+    if(!req.user.permissions.includes('131') && !req.user.permissions.includes('132')){
         res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to view Custom products."
