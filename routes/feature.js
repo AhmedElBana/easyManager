@@ -83,7 +83,7 @@ router.post('/edit', authenticate, function(req, res, next) {
             if(req.body.name){updateBody.name = req.body.name}
             if(req.body.options){updateBody.options = req.body.options.split(",")}
             if(req.body.active){updateBody.active = req.body.active}
-            if(req.body.for_custom_products){updateBody.for_custom_products = req.body.for_custom_products}
+            if(req.body.for_custom_products === true || req.body.for_custom_products === false){updateBody.for_custom_products = req.body.for_custom_products}
 
             let query;
             if(req.user.type == 'admin'){
