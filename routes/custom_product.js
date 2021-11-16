@@ -454,7 +454,6 @@ router.post('/start', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            Custom_product.findOne({parent: body.parent, _id: body.id})
             let updateBody = {"status": "accepted", "accepted_at": new Date(), "accepted_from": req.user._id};
             let query = {parent: body.parent, _id: body.id, status: "assigned"};
             Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
