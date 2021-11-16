@@ -17,7 +17,7 @@ let Custom_productSchema = new mongoose.Schema({
 	//{"material_id": quantity}
 	materials_branch: {type: ObjectId, ref: 'Branch'},
 	materials: { type:  mongoose.Schema.Types.Mixed, of: String },
-	status: { type: String, required: true, trim: true, enum: ['created','assigned','accepted','inprogress','ready','delivered','canceled'] },
+	status: { type: String, required: true, trim: true, enum: ['created','assigned','accepted','ready','delivered','canceled'] },
 	created_at: { type: Date, required: true, trim: true },
 	created_from: {type: ObjectId, ref: 'User'},
 	deadline: { type: Date, required: true, trim: true },

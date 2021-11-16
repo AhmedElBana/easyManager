@@ -451,7 +451,7 @@ router.get('/list', authenticate, function(req, res, next) {
         const options = {
             page: page,
             limit: page_size,
-            sort: { createdAt: -1 },
+            sort: { created_at: -1 },
             populate: [
                 { path: 'customer', select: ['name', 'phoneNumber'] },
                 { path: 'branch', select: ['name', 'phoneNumber', 'address', 'type'] },
@@ -480,6 +480,9 @@ router.get('/list', authenticate, function(req, res, next) {
         if(req.query.status){filters.status = req.query.status}
         if(req.query.creator_id){filters.created_from = req.query.creator_id}
         if(req.query.branch_id){filters.branch = req.query.branch_id}
+        if(req.query.accepted_from){filters.accepted_from = req.query.accepted_from}
+        if(req.query.ready_from){filters.ready_from = req.query.ready_from}
+        if(req.query.delivered_from){filters.delivered_from = req.query.delivered_from}
         if(req.query.createdDateFrom){
             if(new Date(req.query.createdDateFrom) == "Invalid Date"){
                 errHappen = true;
