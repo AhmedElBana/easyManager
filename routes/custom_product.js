@@ -443,7 +443,7 @@ router.post('/start', authenticate, function(req, res, next) {
         });
     }else{
         let body = _.pick(req.body, ['id']);
-        if(!body.product_id){
+        if(!body.id){
             res.status(400).send({
                 "status": 0,
                 "message": "Missing data, (id) field is required."
