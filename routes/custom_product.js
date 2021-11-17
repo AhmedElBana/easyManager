@@ -720,7 +720,7 @@ var checkFinalMaterialsAvailability = (body, final_materials_obj, materials_bran
                 return callback(err)
             }else{
                 products.map((singleProduct) => {
-                    if(!singleProduct.map[materials_branch] || singleProduct.map[materials_branch] < productsQuantityMap[singleProduct._id.toString()]){
+                    if((!singleProduct.map[materials_branch] && singleProduct.map[materials_branch] != 0) || singleProduct.map[materials_branch] < productsQuantityMap[singleProduct._id.toString()]){
                         fountError = true;
                         let err = {
                             "status": 0,
