@@ -169,5 +169,27 @@ router.get('/list', authenticate, function(req, res, next) {
         });
     });
 });
-
+router.get('/custom', authenticate, function(req, res, next){
+        let user = req.user;
+        let body = _.pick(req.query, []);
+        if(req.user.type == 'admin'){
+            body.parent = req.user._id;
+        }else if(req.user.type == 'staff'){
+            body.parent = req.user.parent;
+        }
+        let filters = { 
+            parent: body.parent,
+            for_custom_products: true
+        };
+        Feature.find(filters)
+        .then((features) => {
+            return res.send({
+                "data": features
+            });
+        },(e) => {
+            res.status(400).send({
+                "message": "error happen while fetch features."
+            });
+        });
+});
 module.exports = router;

@@ -740,6 +740,57 @@ var checkFinalMaterialsAvailability = (body, final_materials_obj, materials_bran
             return callback(err)
         });
 }
+router.post('/ready_cancel', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('134') && !req.user.permissions.includes('135')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to update cutom product."
+        });
+    }else{
+        let body = _.pick(req.body, ['id']);
+        if(!body.id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (id) field is required."
+            });
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            let updateBody = {"status": "accepted", "ready_at": undefined, "ready_from": undefined};
+            let query = {parent: body.parent, _id: body.id, status: "ready"};
+            Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                if(e){
+                    if(e.name && e.name == "CastError"){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": e.message
+                        });
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "error while updating custom product data."
+                        });
+                    }
+                }else{
+                    if(response == null){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "can't find any custom product with this _id and ready status."
+                        });
+                    }else{
+                        return res.send({
+                            "status": 1,
+                            "data": response
+                        });   
+                    }
+                }
+            })  
+        }
+    }
+});
 /* list Custom_products. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('131') && !req.user.permissions.includes('132')){
