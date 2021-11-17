@@ -643,20 +643,28 @@ function confirm_materials(body, custom_product, callback) {
                         final_materials_obj[ele_id] = Number(body.final_materials[ele_id])
                     }
                 })
-                //check final_materials_obj avilability
-                checkFinalMaterialsAvailability(body,final_materials_obj,custom_product.materials_branch,function(err){
-                    if(err !== null){
-                        return callback(err);
-                    }else{
-                        removeProducts(body,function(err){
-                            if(err !== null){
-                                res.status(400).send(err);
-                            }else{
-                                callback(null);
-                            }
-                        })
+                if(validation_err){
+                    let err = {
+                        "status": 0,
+                        "message": "Wrong data (final_materials) must be JSON object (key) is custom product id (value) is quantity."
                     }
-                })
+                    return callback(err);
+                }else{
+                    //check final_materials_obj avilability
+                    checkFinalMaterialsAvailability(body,final_materials_obj,custom_product.materials_branch,function(err){
+                        if(err !== null){
+                            return callback(err);
+                        }else{
+                            removeProducts(body,function(err){
+                                if(err !== null){
+                                    res.status(400).send(err);
+                                }else{
+                                    callback(null);
+                                }
+                            })
+                        }
+                    })
+                }
             }
         })
     }else{
