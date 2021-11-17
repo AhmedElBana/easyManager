@@ -537,6 +537,209 @@ router.post('/start_cancel', authenticate, function(req, res, next) {
         }
     }
 });
+/* set ready custom products. */
+router.post('/set_ready', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('134') && !req.user.permissions.includes('135')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to start cutom product."
+        });
+    }else{
+        let body = _.pick(req.body, ['id', 'final_materials']);
+        if(!body.id){
+            res.status(400).send({
+                "status": 0,
+                "message": "Missing data, (id) field is required."
+            });
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            Custom_product.findOne({_id: body.id, parent: body.parent})
+            .then((custom_product) => {
+                if(!custom_product){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "you don't have any custom product with this id."
+                    });
+                }else{
+                    if(custom_product.status != "accepted"){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "this custom product is not accepted yet."
+                        });
+                    }else {
+                        confirm_materials(body,custom_product,function(err){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                let updateBody = {"status": "ready", "ready_at": new Date(), "ready_from": req.user._id};
+                                if(body.final_materials){
+                                    updateBody["materials"] = body.final_materials;
+                                }
+                                let query = {parent: body.parent, _id: body.id, status: "accepted"};
+                                Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                                    if(e){
+                                        if(e.name && e.name == "CastError"){
+                                            res.status(400).send({
+                                                "status": 0,
+                                                "message": e.message
+                                            });
+                                        }else{
+                                            res.status(400).send({
+                                                "status": 0,
+                                                "message": "error while updating custom product data."
+                                            });
+                                        }
+                                    }else{
+                                        if(response == null){
+                                            res.status(400).send({
+                                                "status": 0,
+                                                "message": "can't find any custom product with this _id and accepted status."
+                                            });
+                                        }else{
+                                            return res.send({
+                                                "status": 1,
+                                                "data": response
+                                            });   
+                                        }
+                                    }
+                                })
+                            }
+                        })
+                    }
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "you don't have any custom product with this id."
+                });
+            });
+        }
+    }
+});
+function confirm_materials(body, custom_product, callback) {
+    if(body.final_materials){
+        check_final_materials(body,function(err){
+            if(err !== null){
+                return callback(err);
+            }else{
+                let final_materials_obj = {}
+                Object.keys(custom_product.materials).map((ele_id)=>{
+                    final_materials_obj[ele_id] = -custom_product.materials[ele_id]
+                })
+                Object.keys(body.final_materials).map((ele_id)=>{
+                    if(final_materials_obj[ele_id]){
+                        final_materials_obj[ele_id] = final_materials_obj[ele_id] + body.final_materials[ele_id]
+                    }else{
+                        final_materials_obj[ele_id] = body.final_materials[ele_id]
+                    }
+                })
+                //check final_materials_obj avilability
+                checkFinalMaterialsAvailability(body,final_materials_obj,custom_product.materials_branch,function(err){
+                    if(err !== null){
+                        return callback(err);
+                    }else{
+                        removeProducts(body,function(err){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                callback(null);
+                            }
+                        })
+                    }
+                })
+            }
+        })
+    }else{
+        callback(null);
+    }
+}
+var check_final_materials = (body, callback) => {
+    try {
+        if(body.final_materials && typeof(body.final_materials) !== 'object'){
+            let err = {
+                "status": 0,
+                "message": "Wrong data (final_materials) must be JSON object."
+            }
+            return callback(err);
+        }else{
+            if(Object.keys(body.final_materials).length == 0){
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data (final_materials) must have one value at least {material_id: quantity}."
+                }
+                return callback(err);
+            }else{
+                return callback(null);
+            }
+        }
+    }
+    catch(error) {
+        console.log(error)
+        let err = {
+            "status": 0,
+            "message": "Wrong data (final_materials) must be JSON object."
+        }
+        return callback(err);
+    }
+}
+var checkFinalMaterialsAvailability = (body, final_materials_obj, materials_branch, callback) => {
+    let fountError = false;
+    let productsArr = [];
+    let productsQuantityMap = {};
+    let finalProductsQuantityMap = {};
+    Object.keys(final_materials_obj).map((material_id)=>{
+        productsArr.push(material_id)
+        productsQuantityMap[material_id] = final_materials_obj[material_id];
+    })
+    Product.find({'_id': { $in: productsArr}, 'parent': body.parent, "is_material": true})
+        .then((products) => {
+            if(products.length !== productsArr.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some materials, please check (material_id) for each material."
+                };
+                return callback(err)
+            }else{
+                products.map((singleProduct) => {
+                    if(!singleProduct.map[materials_branch] || singleProduct.map[materials_branch] < productsQuantityMap[singleProduct._id.toString()]){
+                        fountError = true;
+                        let err = {
+                            "status": 0,
+                            "message": "can't find enough quantity from this material  (" + singleProduct._id.toString() +") in selected materials_branch."
+                        };
+                        return callback(err)
+                    }
+                })
+                products.map((singleProduct) => {
+                    var newMapObj = {...singleProduct.map};
+                    newMapObj[materials_branch] -= productsQuantityMap[singleProduct._id.toString()]
+                    finalProductsQuantityMap[singleProduct._id] = newMapObj;
+                })
+                body.finalProductsQuantityMap = finalProductsQuantityMap;
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
+}
 /* list Custom_products. */
 router.get('/list', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('131') && !req.user.permissions.includes('132')){
