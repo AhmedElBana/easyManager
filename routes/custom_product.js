@@ -628,13 +628,13 @@ function confirm_materials(body, custom_product, callback) {
             }else{
                 let final_materials_obj = {}
                 Object.keys(custom_product.materials).map((ele_id)=>{
-                    final_materials_obj[ele_id] = -custom_product.materials[ele_id]
+                    final_materials_obj[ele_id] = -Number(custom_product.materials[ele_id])
                 })
                 Object.keys(body.final_materials).map((ele_id)=>{
                     if(final_materials_obj[ele_id]){
-                        final_materials_obj[ele_id] = final_materials_obj[ele_id] + body.final_materials[ele_id]
+                        final_materials_obj[ele_id] = Number(final_materials_obj[ele_id]) + Number(body.final_materials[ele_id])
                     }else{
-                        final_materials_obj[ele_id] = body.final_materials[ele_id]
+                        final_materials_obj[ele_id] = Number(body.final_materials[ele_id])
                     }
                 })
                 //check final_materials_obj avilability
@@ -693,7 +693,7 @@ var checkFinalMaterialsAvailability = (body, final_materials_obj, materials_bran
     let finalProductsQuantityMap = {};
     Object.keys(final_materials_obj).map((material_id)=>{
         productsArr.push(material_id)
-        productsQuantityMap[material_id] = final_materials_obj[material_id];
+        productsQuantityMap[material_id] = Number(final_materials_obj[material_id]);
     })
     Product.find({'_id': { $in: productsArr}, 'parent': body.parent, "is_material": true})
         .then((products) => {
