@@ -153,7 +153,7 @@ function updateOneProduct(product_id, updatedMap) {
     return new Promise(resolve => {
         totalQuantity = 0;
         Object.keys(updatedMap).map((branch_id)=>{
-            totalQuantity += updatedMap[branch_id]
+            totalQuantity += Number(updatedMap[branch_id])
         })
         let updateBody = {"map": updatedMap, "quantity": totalQuantity};
         let query = {_id: product_id};
@@ -233,7 +233,7 @@ var checkMaterialsAvailability = (body, callback) => {
                 })
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
-                    newMapObj[body.materials_branch] -= productsQuantityMap[singleProduct._id.toString()]
+                    newMapObj[body.materials_branch] -= Number(productsQuantityMap[singleProduct._id.toString()])
                     finalProductsQuantityMap[singleProduct._id] = newMapObj;
                 })
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
@@ -717,7 +717,7 @@ var checkFinalMaterialsAvailability = (body, final_materials_obj, materials_bran
                 })
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
-                    newMapObj[materials_branch] -= productsQuantityMap[singleProduct._id.toString()]
+                    newMapObj[materials_branch] -= Number(productsQuantityMap[singleProduct._id.toString()])
                     finalProductsQuantityMap[singleProduct._id] = newMapObj;
                 })
                 body.finalProductsQuantityMap = finalProductsQuantityMap;
