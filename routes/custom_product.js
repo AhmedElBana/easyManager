@@ -627,10 +627,16 @@ function confirm_materials(body, custom_product, callback) {
                 return callback(err);
             }else{
                 let final_materials_obj = {}
+                let validation_err = false;
                 Object.keys(custom_product.materials).map((ele_id)=>{
                     final_materials_obj[ele_id] = -Number(custom_product.materials[ele_id])
                 })
                 Object.keys(body.final_materials).map((ele_id)=>{
+                    if(Number(body.final_materials[ele_id]) == NaN){
+                        validation_err = true;
+                    }else{
+                        body.final_materials[ele_id] = Number(body.final_materials[ele_id])
+                    }
                     if(final_materials_obj[ele_id]){
                         final_materials_obj[ele_id] = Number(final_materials_obj[ele_id]) + Number(body.final_materials[ele_id])
                     }else{
