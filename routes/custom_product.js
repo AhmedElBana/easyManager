@@ -168,7 +168,10 @@ function updateOneProduct(product_id, updatedMap) {
 }
 var check_materials = (body, callback) => {
     try {
-        body.materials = JSON.parse(body.materials);
+        try {
+            body.materials = JSON.parse(body.materials);
+        }
+        catch(error) {}
         if(body.materials && typeof(body.materials) !== 'object'){
             let err = {
                 "status": 0,
