@@ -25,9 +25,6 @@ var app = express();
 logger.token('remote-addr', function (req) {
     return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 });
-logger.token('remote-addr', function (req) {
-    return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-});
 logger.token('user-id', function (req) {
     if(req.user && req.user._id){return req.user._id;}else{return "Unauthorized 🧐"}
 });
