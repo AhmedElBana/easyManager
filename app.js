@@ -21,7 +21,7 @@ var storeRouter = require('./routes/store')
 var app = express();
 
 // console logs for each request
-app.use(logger(':remote-addr || :remote-user || :date[iso] || HTTP/:http-version || :res[content-length] bytes :response-time ms || :method :url :status'));
+app.use(logger('::req[Remote Address] || :date[iso] || HTTP/:http-version || :res[content-length] bytes :response-time ms || :method :url :status'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
