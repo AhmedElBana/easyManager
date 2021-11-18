@@ -35,7 +35,7 @@ logger.token('url', function (req, res) {
     return chalk.yellow.bold(req.originalUrl)
 });
 logger.token('date', (req, res, tz) => {
-    return new Date().toLocaleString();
+    return new Date().toLocaleString("en-NZ");
 })
 app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent \n-----------------------------------------------------------------------------------------'));
 
