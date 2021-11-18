@@ -343,7 +343,10 @@ var check_deadline = (body, callback) => {
 }
 var check_features = (body, callback) => {
     try {
-        body.features = JSON.parse(body.features);
+        try {
+            body.features = JSON.parse(body.features);
+        }
+        catch(error) {}
         if(body.features && typeof(body.features) !== 'object'){
             fountError = true;
             let err = {
