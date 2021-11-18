@@ -2,6 +2,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser'); 
 var logger = require('morgan');
+const chalk = require ('chalk');
 
 var usersRouter = require('./routes/users');
 var staffRouter = require('./routes/staff');
@@ -28,14 +29,13 @@ logger.token('remote-addr', function (req) {
     return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 });
 logger.token('user-id', function (req) {
-    if(req.user && req.user._id){
-        return req.user._id;
-    }else{
-        return "Unauthorized"
-    }
+    if(req.user && req.user._id){return req.user._id;}else{return "Unauthorized 🧐"}
 });
-logger.token('user-agent', function (req) {
-    return req.headers["user-agent"];
+logger.token('status', function (req, res) {
+    if(res.statusCode >= 400){return chalk.red.bold(res.statusCode) + " 🥵"}else{return chalk.green.bold(res.statusCode) + " 🥳"}
+});
+logger.token('url', function (req, res) {
+    return chalk.blue.bold(req.originalUrl)
 });
 logger.token('date', (req, res, tz) => {
     return new Date().toLocaleString();
