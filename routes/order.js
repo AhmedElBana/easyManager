@@ -856,6 +856,8 @@ router.post('/cancel', authenticate, function(req, res, next) {
                         "message": "can't find any order with this order_id."
                     });
                 }else{
+                    console.log(order.creator_id)
+                    console.log(req.user._id)
                     if(order.creator_id != req.user._id){
                         res.status(400).send({
                             "status": 0,
