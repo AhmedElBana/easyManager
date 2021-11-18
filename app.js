@@ -21,8 +21,13 @@ var storeRouter = require('./routes/store')
 var app = express();
 
 // console logs for each request
-app.enable("trust proxy");
-app.use(logger(':remote-addr || :remote-user || :date[iso] || HTTP/:http-version || :res[content-length] bytes :response-time ms || :method :url :status'));
+app.enable('trust proxy');
+app.set('trust proxy',function(){ return true; });
+logger.token('remote-addr', function (req) {
+    return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+});
+
+app.use(logger(':remote-addr || :remote-user || :date[iso] || :res[content-length] bytes :response-time ms || :method :url :status'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
