@@ -32,7 +32,7 @@ logger.token('status', function (req, res) {
     if(res.statusCode >= 400){return chalk.red.bold(res.statusCode) + " 🥵"}else{return chalk.green.bold(res.statusCode) + " 🥳"}
 });
 logger.token('url', function (req, res) {
-    return chalk.blue.bold(req.originalUrl)
+    return chalk.yellow.bold(req.originalUrl)
 });
 logger.token('date', (req, res, tz) => {
     return new Date().toLocaleString();
