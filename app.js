@@ -21,7 +21,7 @@ var storeRouter = require('./routes/store')
 var app = express();
 
 // console logs for each request
-// app.use(logger('dev'));
+app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
