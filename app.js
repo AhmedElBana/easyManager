@@ -24,7 +24,13 @@ var app = express();
 logger.token('remote-addr', function (req) {
     return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 });
-app.use(logger(':remote-addr || :date[iso] || :res[content-length] bytes :response-time ms || :method :url :status'));
+logger.token('remote-addr', function (req) {
+    return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+});
+logger.token('user-id', function (req) {
+    return req.user._id;
+});
+app.use(logger(':remote-addr || :user-id || :date[iso] || :res[content-length] bytes :response-time ms || :method :url :status'));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
