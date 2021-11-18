@@ -30,7 +30,10 @@ logger.token('remote-addr', function (req) {
 logger.token('user-id', function (req) {
     return req.user._id;
 });
-app.use(logger(':method :url :status \n:remote-addr || :user-id || :date[iso] || :res[content-length] bytes :response-time ms \n-----------------------------------------------------------------------------------------'));
+logger.token('user-agent', function (req) {
+    return req.headers["user-agent"];
+});
+app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || :date[iso] \n:remote-addr || :user-agent || :user-id \n-----------------------------------------------------------------------------------------'));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
