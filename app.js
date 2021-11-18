@@ -28,7 +28,11 @@ logger.token('remote-addr', function (req) {
     return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 });
 logger.token('user-id', function (req) {
-    return req.user._id;
+    if(req.user && req.user._id){
+        return req.user._id;
+    }else{
+        return "Unauthorized"
+    }
 });
 logger.token('user-agent', function (req) {
     return req.headers["user-agent"];
