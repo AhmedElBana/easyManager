@@ -33,7 +33,10 @@ logger.token('user-id', function (req) {
 logger.token('user-agent', function (req) {
     return req.headers["user-agent"];
 });
-app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || :date[iso] \n:remote-addr || :user-agent || :user-id \n-----------------------------------------------------------------------------------------'));
+logger.token('date', (req, res, tz) => {
+    return new Date().toLocaleString();
+})
+app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent \n-----------------------------------------------------------------------------------------'));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
