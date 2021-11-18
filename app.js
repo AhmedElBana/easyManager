@@ -30,7 +30,7 @@ logger.token('remote-addr', function (req) {
 logger.token('user-id', function (req) {
     return req.user._id;
 });
-app.use(logger(':remote-addr || :user-id || :date[iso] || :res[content-length] bytes :response-time ms || :method :url :status'));
+app.use(logger(':remote-addr || :user-id || :date[iso] || :res[content-length] bytes :response-time ms \n :method :url :status'));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
