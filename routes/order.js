@@ -1773,9 +1773,8 @@ router.get('/summary', authenticate, function(req, res, next){
 
 router.get('/search_id', function(req, res, next){
     if(!req.query._id){
-        res.status(400).send({
-            "status": 0,
-            "message": "Missing data, (_id) field is required."
+        return res.send({
+            "data": []
         });
     }else{
         let filters = [
@@ -1788,7 +1787,8 @@ router.get('/search_id', function(req, res, next){
               $match: {
                 tempId: { $regex: req.query._id, $options: "i" }
               }
-            }
+            },
+            { $limit : 10 }
           ]
         Order.aggregate(filters)
         .then((order) => {

@@ -2,6 +2,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser'); 
 var logger = require('morgan');
+var morganBody = require('morgan-body');
+var bodyParser = require('body-parser');
 const chalk = require ('chalk');
 
 var usersRouter = require('./routes/users');
@@ -21,6 +23,8 @@ var storeRouter = require('./routes/store')
 
 var app = express();
 
+app.use(bodyParser.json());
+
 // console logs for each request
 logger.token('remote-addr', function (req) {
     return req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -38,15 +42,30 @@ logger.token('date', (req, res, tz) => {
     return new Date().toLocaleString("en-NZ");
 })
 logger.token('body', (req, res) => {
-    return chalk.yellow.bold("🚀Body: ") + JSON.stringify(req.body);
+    if(res.statusCode >= 400){
+        return chalk.yellow.bold("\nReq Body 🚀: ") + JSON.stringify(req.body);
+    }else{
+        return " "
+    }
+})
+logger.token('resp-body', (req, res) => {
+    if(res.statusCode >= 400){
+        return chalk.yellow.bold("\nRes Body 🛩 : ") + JSON.stringify(res.__morgan_body_response);
+    }else{
+        return " "
+    }
 })
 //app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent \n-----------------------------------------------------------------------------------------'));
 app.use(logger(
 `:method :url
-Status: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent                 
-:body
+Status: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent :body :resp-body
 -------------------------------------------------------------------------------------------------------------------------------------`
 ));
+morganBody(app, {
+    noColors: true,
+    skip: (req, res) => true,
+  });
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
