@@ -37,7 +37,16 @@ logger.token('url', function (req, res) {
 logger.token('date', (req, res, tz) => {
     return new Date().toLocaleString("en-NZ");
 })
-app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent \n-----------------------------------------------------------------------------------------'));
+logger.token('body', (req, res) => {
+    return chalk.yellow.bold("🚀Body: ") + JSON.stringify(req.body);
+})
+//app.use(logger(':method :url \nStatus: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent \n-----------------------------------------------------------------------------------------'));
+app.use(logger(
+`:method :url
+Status: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent                 
+:body
+-------------------------------------------------------------------------------------------------------------------------------------`
+));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

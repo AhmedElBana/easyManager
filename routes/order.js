@@ -1036,7 +1036,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                                         //create the return
                                                                                                         let orderObj = {
                                                                                                             "type": "Return",
-                                                                                                            "customer": order.customer_id,
+                                                                                                            "customer": order.customer,
                                                                                                             "products": body.products,
                                                                                                             "bill": body.bill,
                                                                                                             "prevOrderSubTotal": order.subTotal,
@@ -1623,7 +1623,7 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        if(req.query._id){filters._id = req.query._id}
+        if(req.query._id){filters._id={ $regex: new RegExp(req.query._id), $options: "i" }}
         if(req.query.canceled){filters.canceled = req.query.canceled}
         if(req.query.returned){filters.returned = req.query.returned}
         if(req.query.creator_id){filters.creator_id = req.query.creator_id}
