@@ -1623,7 +1623,7 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        if(req.query._id){filters._id={ $regex: new RegExp(req.query._id), $options: "i" }}
+        //if(req.query._id){filters._id={ $regex: new RegExp(req.query._id), $options: "i" }}
         if(req.query.canceled){filters.canceled = req.query.canceled}
         if(req.query.returned){filters.returned = req.query.returned}
         if(req.query.creator_id){filters.creator_id = req.query.creator_id}
@@ -1770,4 +1770,43 @@ router.get('/summary', authenticate, function(req, res, next){
         }
     }
 });
+
+router.get('/search_id', function(req, res, next){
+    if(!req.query._id){
+        res.status(400).send({
+            "status": 0,
+            "message": "Missing data, (_id) field is required."
+        });
+    }else{
+        let filters = [
+            {
+              $addFields: {
+                tempId: { $toString: '$_id' },
+              }
+            },
+            {
+              $match: {
+                tempId: { $regex: req.query._id, $options: "i" }
+              }
+            }
+          ]
+        Order.aggregate(filters)
+        .then((order) => {
+            if(!order){
+                res.status(400).send({
+                    "message": "can't find any order with this _id."
+                });
+            }else{
+                return res.send({
+                    "data": order
+                });
+            }
+        },(e) => {
+            res.status(400).send({
+                "message": "can't find any order with this _id."
+            });
+        });
+    }
+});
+
 module.exports = router;
