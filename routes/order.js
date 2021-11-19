@@ -1771,7 +1771,7 @@ router.get('/summary', authenticate, function(req, res, next){
     }
 });
 
-router.get('/search_id', function(req, res, next){
+router.get('/search_id', authenticate, function(req, res, next){
     if(!req.query._id){
         return res.send({
             "data": []
