@@ -20,7 +20,6 @@ let CustomerSchema = new mongoose.Schema({
 	phoneNumber: {
 		type: String,
 		trim: true,
-		unique: true,
 		required: true
 	},
 	parent: {
