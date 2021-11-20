@@ -987,106 +987,124 @@ router.post('/return', authenticate, function(req, res, next) {
                             "message": "This order can't be return because it returned before."
                         });
                     }else{
-                        checkStoreConditions(body, order, function(err, store){
+                        checkReturnCustomer(body, order, function(err, customer){
                             if(err !== null){
                                 res.status(400).send(err);
                             }else{
-                                checkBranch(req, body, function(err){
+                                checkStoreConditions(body, order, function(err, store){
                                     if(err !== null){
                                         res.status(400).send(err);
                                     }else{
-                                        productsCheckFormat(body.removedProducts, function(err){
+                                        checkBranch(req, body, function(err){
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
-                                                productsCheckFormat(body.newProducts, function(err){
+                                                productsCheckFormat(body.removedProducts, function(err){
                                                     if(err !== null){
                                                         res.status(400).send(err);
                                                     }else{
-                                                        checkNewProductsAvailability(body, body.newProducts, function(err){
+                                                        productsCheckFormat(body.newProducts, function(err){
                                                             if(err !== null){
                                                                 res.status(400).send(err);
                                                             }else{
-                                                                checkRemovedProducts(body.removedProducts, order.products, function(err, remainderProducts){
+                                                                checkNewProductsAvailability(body, body.newProducts, function(err){
                                                                     if(err !== null){
                                                                         res.status(400).send(err);
                                                                     }else{
-                                                                        body.remainderProducts = remainderProducts;
-                                                                        remainderProductsBill(body, remainderProducts, function(err, remainderProducts){
+                                                                        checkRemovedProducts(body.removedProducts, order.products, function(err, remainderProducts){
                                                                             if(err !== null){
                                                                                 res.status(400).send(err);
                                                                             }else{
-                                                                                removeNewProducts(body, function(err){
+                                                                                body.remainderProducts = remainderProducts;
+                                                                                remainderProductsBill(body, remainderProducts, function(err, remainderProducts){
                                                                                     if(err !== null){
                                                                                         res.status(400).send(err);
                                                                                     }else{
-                                                                                        addProducts(body.removedProducts, body.parent, body.branch_id, function(err){
+                                                                                        removeNewProducts(body, function(err){
                                                                                             if(err !== null){
                                                                                                 res.status(400).send(err);
                                                                                             }else{
-                                                                                                body.promo = order.promo;
-                                                                                                body.promo_id = order.promo_id;
-                                                                                                body.subTotal = body.remainderProductsSubTotal + body.newProductsSubTotal;
-                                                                                                body.bill = [...body.remainderProductsBill,...body.newProductsBill];
-                                                                                                body.products = [...body.remainderProducts,...body.newProducts];
-                                                                                                checkReturnPromo(body, order.total, function(err){
+                                                                                                addProducts(body.removedProducts, body.parent, body.branch_id, function(err){
                                                                                                     if(err !== null){
                                                                                                         res.status(400).send(err);
                                                                                                     }else{
-                                                                                                        //create the return
-                                                                                                        let orderObj = {
-                                                                                                            "type": "Return",
-                                                                                                            "customer": order.customer,
-                                                                                                            "products": body.products,
-                                                                                                            "bill": body.bill,
-                                                                                                            "prevOrderSubTotal": order.subTotal,
-                                                                                                            "prevOrderDiscountValue": order.discountValue,
-                                                                                                            "prevOrderTotal": order.total,
-                                                                                                            "subTotal": body.subTotal.toFixed(2),
-                                                                                                            "total": body.total.toFixed(2),
-                                                                                                            "amount_out": body.amount_out.toFixed(2),
-                                                                                                            "amount_in": body.amount_in.toFixed(2),
-                                                                                                            "discountValue": body.discountValue.toFixed(2),
-                                                                                                            "promo": body.promo,
-                                                                                                            "createdDate": new Date(),
-                                                                                                            "branch_id": body.branch_id,
-                                                                                                            "creator_id": req.user._id,
-                                                                                                            "canceled": false,
-                                                                                                            "returned": false,
-                                                                                                            "parentOrder": order._id,
-                                                                                                            "parent": body.parent
-                                                                                                        }
-                                                                                                        if(body.promo && body.promo_id != undefined){
-                                                                                                            orderObj.promo_id = body.promo_id
-                                                                                                        }
-                                                                                                        if(body.returnNote){
-                                                                                                            orderObj.returnNote = body.returnNote;
-                                                                                                        }
-                                                                                                        let newOrderData = new Order(orderObj);
-                                                                                                        newOrderData.save().then((newOrder) => {    
-                                                                                                            let query = {_id: order._id, parent: body.parent};
-                                                                                                            let newData = {returned: true, returnedDate: new Date()}
-                                                                                                            Order.findOneAndUpdate(query,newData, { new: true })
-                                                                                                            .then(updatedProduct => {
-                                                                                                                return res.status(201).send({
-                                                                                                                    "status": 1,
-                                                                                                                    "data": {
-                                                                                                                        "orderData": newOrder
-                                                                                                                    }
+                                                                                                        body.promo = order.promo;
+                                                                                                        body.promo_id = order.promo_id;
+                                                                                                        body.subTotal = body.remainderProductsSubTotal + body.newProductsSubTotal;
+                                                                                                        body.bill = [...body.remainderProductsBill,...body.newProductsBill];
+                                                                                                        body.products = [...body.remainderProducts,...body.newProducts];
+                                                                                                        checkReturnPromo(body, order.total, function(err){
+                                                                                                            if(err !== null){
+                                                                                                                res.status(400).send(err);
+                                                                                                            }else{
+                                                                                                                //create the return
+                                                                                                                let orderObj = {
+                                                                                                                    "type": "Return",
+                                                                                                                    "customer": order.customer,
+                                                                                                                    "products": body.products,
+                                                                                                                    "bill": body.bill,
+                                                                                                                    "prevOrderSubTotal": order.subTotal,
+                                                                                                                    "prevOrderDiscountValue": order.discountValue,
+                                                                                                                    "prevOrderTotal": order.total,
+                                                                                                                    "subTotal": body.subTotal.toFixed(2),
+                                                                                                                    "total": body.total.toFixed(2),
+                                                                                                                    "amount_out": body.amount_out.toFixed(2),
+                                                                                                                    "amount_in": body.amount_in.toFixed(2),
+                                                                                                                    "discountValue": body.discountValue.toFixed(2),
+                                                                                                                    "promo": body.promo,
+                                                                                                                    "createdDate": new Date(),
+                                                                                                                    "branch_id": body.branch_id,
+                                                                                                                    "creator_id": req.user._id,
+                                                                                                                    "canceled": false,
+                                                                                                                    "returned": false,
+                                                                                                                    "parentOrder": order._id,
+                                                                                                                    "parent": body.parent
+                                                                                                                }
+                                                                                                                if(body.promo && body.promo_id != undefined){
+                                                                                                                    orderObj.promo_id = body.promo_id
+                                                                                                                }
+                                                                                                                if(body.returnNote){
+                                                                                                                    orderObj.returnNote = body.returnNote;
+                                                                                                                }
+                                                                                                                let newOrderData = new Order(orderObj);
+                                                                                                                newOrderData.save().then((newOrder) => {    
+                                                                                                                    let query = {_id: order._id, parent: body.parent};
+                                                                                                                    let newData = {returned: true, returnedDate: new Date()}
+                                                                                                                    Order.findOneAndUpdate(query,newData, { new: true })
+                                                                                                                    .then(updatedProduct => {
+                                                                                                                        single_sms(
+                                                                                                                            orderObj.parent,
+                                                                                                                            "Thanks for shopping with us.\nYour Returned amount is " + orderObj.amount_out + "EGP.\nVisit https://tradket.com/bill/" + orderObj._id + " to check bill details.",
+                                                                                                                            customer.phoneNumber,
+                                                                                                                            function(error, data){
+                                                                                                                                if (error){
+                                                                                                                                    return res.status(201).send({
+                                                                                                                                        "sms": "fail",
+                                                                                                                                        "data": newOrder
+                                                                                                                                    });
+                                                                                                                                }else{
+                                                                                                                                    return res.status(201).send({
+                                                                                                                                        "sms": "success",
+                                                                                                                                        "data": newOrder
+                                                                                                                                    });
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        )
+                                                                                                                    })
+                                                                                                                    .catch(err => {
+                                                                                                                        res.status(400).send({
+                                                                                                                            "status": 0,
+                                                                                                                            "message": "error while query order data."
+                                                                                                                        });
+                                                                                                                    });
+                                                                                                                }).catch((e) => {
+                                                                                                                    res.status(400).send({
+                                                                                                                        "status": 0,
+                                                                                                                        "message": e
+                                                                                                                    });
                                                                                                                 });
-                                                                                                            })
-                                                                                                            .catch(err => {
-                                                                                                                res.status(400).send({
-                                                                                                                    "status": 0,
-                                                                                                                    "message": "error while query order data."
-                                                                                                                });
-                                                                                                            });
-                                                                                                        }).catch((e) => {
-                                                                                                            res.status(400).send({
-                                                                                                                "status": 0,
-                                                                                                                "message": e
-                                                                                                            });
-                                                                                                        });
+                                                                                                            }
+                                                                                                        })
                                                                                                     }
                                                                                                 })
                                                                                             }
@@ -1107,7 +1125,6 @@ router.post('/return', authenticate, function(req, res, next) {
                                 })
                             }
                         })
-                        
                     }
                 }
             },(e) => {
@@ -1126,6 +1143,24 @@ router.post('/return', authenticate, function(req, res, next) {
         }
     }
 });
+var checkReturnCustomer = (body, order, callback) => {
+    Customer.findOne({_id: order.customer, parent: body.parent})
+    .then((customer) => {
+        if(!customer){
+            callback({
+                "status": 0,
+                "message": "error happen while query customer data."
+            }, null)
+        }else{
+            callback(null, customer)
+        }
+    },(e) => {
+        callback({
+            "status": 0,
+            "message": "error happen while query customer data."
+        }, null)
+    });
+}
 var checkStoreConditions = (body, order, callback) => {
     Store.findOne({parent: body.parent})
     .then((store) => {
