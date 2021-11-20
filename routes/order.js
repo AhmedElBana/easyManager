@@ -1728,8 +1728,24 @@ router.get('/bill', function(req, res, next){
                     "message": "can't find any order with this _id."
                 });
             }else{
-                return res.send({
-                    "data": order
+                Customer.findOne({_id: order.customer, parent: order.parent})
+                .then((customer) => {
+                    if(!customer){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "error happen while query customer data."
+                        }, null)
+                    }else{
+                        order.customer = customer;
+                        return res.send({
+                            "data": order
+                        });
+                    }
+                },(e) => {
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error happen while query customer data."
+                    }, null)
                 });
             }
         },(e) => {
