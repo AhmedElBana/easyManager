@@ -46,6 +46,8 @@ CustomerSchema.methods.toJSON = function(){
 	return _.pick(CustomerObject, ['_id','name','phoneNumber','parent','register_completed']);
 }
 
+CustomerSchema.index({ _id: 1, parent: 1 }, { unique: true });
+
 CustomerSchema.methods.generateAuthToken = function(){
 	let customer = this;
 	let access = 'customerToken';
