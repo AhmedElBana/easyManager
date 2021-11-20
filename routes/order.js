@@ -1073,8 +1073,8 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                                                     Order.findOneAndUpdate(query,newData, { new: true })
                                                                                                                     .then(updatedProduct => {
                                                                                                                         single_sms(
-                                                                                                                            orderObj.parent,
-                                                                                                                            "Thanks for shopping with us.\nYour Returned amount is " + orderObj.amount_out + "EGP.\nVisit https://tradket.com/bill/" + orderObj._id + " to check order bill after return.",
+                                                                                                                            newOrder.parent,
+                                                                                                                            "Thanks for shopping with us.\nYour Returned amount is " + newOrder.amount_out + "EGP.\nVisit https://tradket.com/bill/" + newOrder._id + " to check order bill after return.",
                                                                                                                             customer.phoneNumber,
                                                                                                                             function(error, data){
                                                                                                                                 if (error){
