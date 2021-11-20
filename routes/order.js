@@ -1777,6 +1777,12 @@ router.get('/search_id', authenticate, function(req, res, next){
             "data": []
         });
     }else{
+        let parent;
+        if(req.user.type == 'admin'){
+            parent = req.user._id;
+        }else if(req.user.type == 'staff'){
+            parent = req.user.parent;
+        }
         let filters = [
             {
               $addFields: {
@@ -1785,7 +1791,8 @@ router.get('/search_id', authenticate, function(req, res, next){
             },
             {
               $match: {
-                tempId: { $regex: req.query._id, $options: "i" }
+                tempId: { $regex: req.query._id, $options: "i" },
+                parent: parent
               }
             },
             { $limit : 10 }
