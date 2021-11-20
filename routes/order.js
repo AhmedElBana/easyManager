@@ -1074,7 +1074,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                                                     .then(updatedProduct => {
                                                                                                                         single_sms(
                                                                                                                             orderObj.parent,
-                                                                                                                            "Thanks for shopping with us.\nYour Returned amount is " + orderObj.amount_out + "EGP.\nVisit https://tradket.com/bill/" + orderObj._id + " to check bill details.",
+                                                                                                                            "Thanks for shopping with us.\nYour Returned amount is " + orderObj.amount_out + "EGP.\nVisit https://tradket.com/bill/" + orderObj._id + " to check order bill after return.",
                                                                                                                             customer.phoneNumber,
                                                                                                                             function(error, data){
                                                                                                                                 if (error){
