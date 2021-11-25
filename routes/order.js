@@ -176,7 +176,6 @@ var addPayment = (new_order, callback) => {
         "order": new_order._id,
         "parent": new_order.parent
     }
-    console.log(paymentObj)
     let newPaymentData = new Payment(paymentObj);
     newPaymentData.save().then((newPayment) => {  
         callback(null)
@@ -884,6 +883,146 @@ async function cancelCustomProducts(custom_products, parent_id, callback) {
     }else{
         return callback(null);
     }
+}
+/* order add_payment */
+router.post('/add_payment', authenticate, function(req, res, next) {
+    let body = _.pick(req.body, ['order_id', 'amount','method']);
+    if(!body.order_id || !body.amount || !body.method){
+        res.status(400).send({
+            "status": 0,
+            "message": "Missing data, (order_id, amount, method) field is required."
+        });
+    }else{
+        if(isNaN(body.amount) || Number(body.amount) <= 0){
+            res.status(400).send({
+                "status": 0,
+                "message": "amount must be valid number more than 0."
+            });
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            let query = {
+                _id: body.order_id, 
+                parent: body.parent
+            };
+            Order.findOne(query)
+            .then((order) => {
+                if(!order){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "can't find any order with this order_id."
+                    });
+                }else{
+                    if(order.status == "canceled"){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "Can't add payment on canceled order."
+                        });
+                    }else if(order.status == "returned"){
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "Can't add payment on returned order."
+                        });
+                    }else{
+                        if(Number(order.debt) < Number(body.amount)){
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "Max amout can add to this order is: " + order.debt
+                            });
+                        }else{
+                            let updateBody = {$inc : {'debt' : -body.amount, 'payed': body.amount}};
+                            Order.findOneAndUpdate(query,updateBody, { new: true }, (e, updated_order) => {
+                                if(e){
+                                    if(e.name && e.name == "CastError"){
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": e.message
+                                        });
+                                    }else{
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": "error while updating order data."
+                                        });
+                                    }
+                                }else{
+                                    updateCustomerDebtCustomAmount(updated_order.customer, body.amount, function(err){
+                                        if(err !== null){
+                                            res.status(400).send(err);
+                                        }else{
+                                            addNewPayment(updated_order, body.amount, req.user._id, body.method, function(err){
+                                                if(err !== null){
+                                                    res.status(400).send(err);
+                                                }else{
+                                                    return res.send({
+                                                        "status": 1,
+                                                        "data": updated_order
+                                                    });
+                                                }
+                                            })
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    }
+                }
+            },(e) => {
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Wrong order_id value."
+                    });
+                }else{
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "error happen while query order data."
+                    });
+                }
+            });
+        }
+    }
+});
+var updateCustomerDebtCustomAmount = (customer, amount, callback) => {
+    let updateBody = {$inc : {'debt' : -amount}};
+    let query = {_id: customer};
+    Customer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            callback({
+                "status": 0,
+                "message": e
+            })
+        }else{
+            callback(null);
+        }
+    })
+}
+var addNewPayment = (new_order, add_amount, staff, method, callback) => {
+    let paymentObj = {
+        "type": "in",
+        "sub_type": "order",
+        "method": method,
+        "status": "success",
+        "name": "Debt pay",
+        "branch": new_order.branch_id,
+        "amount": Number(add_amount),
+        "created_at": new Date(),
+        "created_from": staff,
+        "customer": new_order.customer,
+        "order": new_order._id,
+        "parent": new_order.parent
+    }
+    let newPaymentData = new Payment(paymentObj);
+    newPaymentData.save().then((newPayment) => {  
+        callback(null)
+    }).catch((e) => {
+        callback({
+            "status": 0,
+            "message": e
+        }, null)
+    });
 }
 /* cancel order. */
 router.post('/cancel', authenticate, function(req, res, next) {
