@@ -924,17 +924,17 @@ router.post('/cancel', authenticate, function(req, res, next) {
                             "message": "order must be canceled from the same staff."
                         });
                     }else{
-                        if(order.canceled){
+                        if(order.status == "canceled"){
                             res.status(400).send({
                                 "status": 0,
                                 "message": "This order is already canceled."
                             });
-                        }else if(order.type == "Return"){
+                        }else if(order.type == "return"){
                             res.status(400).send({
                                 "status": 0,
                                 "message": "Can't cancel Return order."
                             });
-                        }else if(order.returned){
+                        }else if(order.status == "returned"){
                             res.status(400).send({
                                 "status": 0,
                                 "message": "This order can't be cancel because it returned before."
@@ -958,8 +958,7 @@ router.post('/cancel', authenticate, function(req, res, next) {
                                             }else{
                                                 //cancel order
                                                 let updateBody = {
-                                                    "canceled": true,
-                                                    "canceledDate": new Date()
+                                                    "status": "canceled",
                                                 };
                                                 Order.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
                                                     if(e){
@@ -975,10 +974,22 @@ router.post('/cancel', authenticate, function(req, res, next) {
                                                             });
                                                         }
                                                     }else{
-                                                        return res.send({
-                                                            "status": 1,
-                                                            "data": response
-                                                        });
+                                                        updateCancelCustomerDebt(response, function(err){
+                                                            if(err !== null){
+                                                                res.status(400).send(err);
+                                                            }else{
+                                                                cancelOrderPayment(response, function(err){
+                                                                    if(err !== null){
+                                                                        res.status(400).send(err);
+                                                                    }else{
+                                                                        return res.send({
+                                                                            "status": 1,
+                                                                            "data": response
+                                                                        });
+                                                                    }
+                                                                })
+                                                            }
+                                                        })
                                                     }
                                                 })
                                             }
@@ -1005,6 +1016,38 @@ router.post('/cancel', authenticate, function(req, res, next) {
         }
     }
 });
+var cancelOrderPayment = (order, callback) => {
+    let updateBody = {"status": "canceled"};
+    let query = {order: order._id, parent: order.parent, "status": "success"};
+    Payment.updateMany(query,updateBody, { new: true }, (e, response) => {
+        if(e){
+            callback({
+                "status": 0,
+                "message": e
+            })
+        }else{
+            callback(null)
+        }
+    })
+}
+var updateCancelCustomerDebt = (new_order, callback) => {
+    if(new_order.debt > 0){
+        let updateBody = {$inc : {'debt' : -new_order.debt}};
+        let query = {_id: new_order.customer};
+        Customer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                callback({
+                    "status": 0,
+                    "message": e
+                })
+            }else{
+                callback(null);
+            }
+        })
+    }else{
+        callback(null);
+    }
+}
 /* return order. */
 router.post('/return', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('126')){
