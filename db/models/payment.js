@@ -7,10 +7,9 @@ const bcrypt = require('bcryptjs');
 var ObjectId = require('mongodb').ObjectID;
 
 let PaymentSchema = new mongoose.Schema({
-	_id: { type: String, trim: true },
 	type: { type: String, required: true, trim: true, enum: ['in','out'] },
 	sub_type: { type: String, required: true, trim: true, enum: ['order','return','debts','others'] },
-	method: { type: String, required: true, trim: true, enum: ['Cashe','Card'] },
+	method: { type: String, required: true, trim: true, enum: ['cashe','card'] },
 	status: { type: String, required: true, trim: true, enum: ['success','canceled'] }, 
 	name: { type: String, required: true, minlenght: 2, trim: true },
 	branch: {type: ObjectId, ref: 'Branch'},

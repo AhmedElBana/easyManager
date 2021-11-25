@@ -6,45 +6,20 @@ const _ = require('lodash');
 const bcrypt = require('bcryptjs');
 
 let CustomerSchema = new mongoose.Schema({
-	name: {
-		type: String,
-		required: true,
-		minlenght: 2,
-		trim: true
-	},
-	password: {
-		type: String,
-		minlength: 6,
-		trim: true
-	},
-	phoneNumber: {
-		type: String,
-		trim: true,
-		unique: false,
-		required: true
-	},
-	parent: {
-		type: String,
-		trim: true
-	},
-	code: {
-		type: String,
-		trim: true
-	},
-	register_completed: {
-		type: Boolean,
-		required: true
-	},
-	is_login: {
-		type: Boolean,
-		required: true
-	},
+	name: { type: String, required: true, minlenght: 2, trim: true },
+	debt: { type: Number, default: 0 },
+	password: { type: String, minlength: 6, trim: true },
+	phoneNumber: { type: String, trim: true, unique: false, required: true },
+	parent: { type: String, trim: true },
+	code: { type: String, trim: true },
+	register_completed: { type: Boolean, required: true },
+	is_login: { type: Boolean, required: true },
 });
 
 CustomerSchema.methods.toJSON = function(){
 	let Customer = this;
 	let CustomerObject = Customer.toObject();
-	return _.pick(CustomerObject, ['_id','name','phoneNumber','parent','register_completed']);
+	return _.pick(CustomerObject, ['_id','name','debt','phoneNumber','parent','register_completed']);
 }
 
 CustomerSchema.index({ _id: 1, parent: 1 }, { unique: true });

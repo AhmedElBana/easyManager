@@ -8,6 +8,7 @@ let {Product} = require('../db/models/product');
 let {Custom_product} = require('../db/models/custom_product');
 let {Promo} = require('../db/models/promo');
 let {Store} = require('../db/models/store');
+let {Payment} = require('../db/models/payment');
 let {authenticate} = require('../middleware/authenticate');
 let {single_sms} = require('./../services/sms');
 
@@ -19,11 +20,11 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new order."
         });
     }else{
-        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id']);
-        if(!body.customerName || !body.customerPhone || !body.promo || !body.branch_id){
+        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id','payed','method']);
+        if(!body.customerName || !body.customerPhone || !body.promo || !body.branch_id || !body.payed || !body.method){
             return res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (customerName, customerPhone, promo, branch_id) fields are required."
+                "message": "Missing data, (customerName, customerPhone, promo, branch_id, payed, method) fields are required."
             });
         }else if(!body.products && !body.custom_products){
             return res.status(400).send({
@@ -70,21 +71,26 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                             return res.status(400).send(err);
                                                                         }else{
                                                                             //create the order
+                                                                            let final_payed = Number(body.payed);
+                                                                            if(Number(body.payed) > Number(body.total)){
+                                                                                final_payed = Number(body.total)
+                                                                            }
+                                                                            let final_debt = Number(body.total) - final_payed;
                                                                             let orderObj = {
-                                                                                "type": "Order",
+                                                                                "type": "order",
+                                                                                "status": "success",
+                                                                                "method": body.method,
                                                                                 "customer": customer._id,
                                                                                 "bill": body.bill,
                                                                                 "subTotal": body.subTotal.toFixed(2),
                                                                                 "total": body.total.toFixed(2),
-                                                                                "amount_in": body.total.toFixed(2),
-                                                                                "amount_out": 0,
+                                                                                "payed": final_payed.toFixed(2),
+                                                                                "debt": final_debt.toFixed(2),
                                                                                 "promo": body.promo,
                                                                                 "discountValue": body.discountValue.toFixed(2),
                                                                                 "createdDate": new Date(),
                                                                                 "branch_id": body.branch_id,
                                                                                 "creator_id": req.user._id,
-                                                                                "canceled": false,
-                                                                                "returned": false,
                                                                                 "parent": body.parent
                                                                             }
                                                                             if(body.promoData){
@@ -98,25 +104,37 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                             }
                                                                             let newOrderData = new Order(orderObj);
                                                                             newOrderData.save().then((finalNewOrder) => {
-                                                                                updateCustomProducts(body, finalNewOrder, function(err){
-                                                                                    single_sms(
-                                                                                        finalNewOrder.parent,
-                                                                                        "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit https://tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
-                                                                                        customer.phoneNumber,
-                                                                                        function(error, data){
-                                                                                            if (error){
-                                                                                                return res.status(201).send({
-                                                                                                    "sms": "fail",
-                                                                                                    "data": finalNewOrder
-                                                                                                });
+                                                                                updateCustomerDebt(finalNewOrder, function(err){
+                                                                                    if(err !== null){
+                                                                                        return res.status(400).send(err);
+                                                                                    }else{
+                                                                                        addPayment(finalNewOrder, function(err){
+                                                                                            if(err !== null){
+                                                                                                return res.status(400).send(err);
                                                                                             }else{
-                                                                                                return res.status(201).send({
-                                                                                                    "sms": "success",
-                                                                                                    "data": finalNewOrder
-                                                                                                });
+                                                                                                updateCustomProducts(body, finalNewOrder, function(err){
+                                                                                                    single_sms(
+                                                                                                        finalNewOrder.parent,
+                                                                                                        "Thanks for shopping with us.\nYour order amount is " + finalNewOrder.total + "EGP.\nVisit https://tradket.com/bill/" + finalNewOrder._id + " to check bill details.",
+                                                                                                        customer.phoneNumber,
+                                                                                                        function(error, data){
+                                                                                                            if (error){
+                                                                                                                return res.status(201).send({
+                                                                                                                    "sms": "fail",
+                                                                                                                    "data": finalNewOrder
+                                                                                                                });
+                                                                                                            }else{
+                                                                                                                return res.status(201).send({
+                                                                                                                    "sms": "success",
+                                                                                                                    "data": finalNewOrder
+                                                                                                                });
+                                                                                                            }
+                                                                                                        }
+                                                                                                    )
+                                                                                                })
                                                                                             }
-                                                                                        }
-                                                                                    )
+                                                                                        })
+                                                                                    }
                                                                                 })
                                                                             }).catch((e) => {
                                                                                 return res.status(400).send({
@@ -143,6 +161,50 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
+var addPayment = (new_order, callback) => {
+    let paymentObj = {
+        "type": "in",
+        "sub_type": "order",
+        "method": new_order.method,
+        "status": "success",
+        "name": "Order Pay",
+        "branch": new_order.branch_id,
+        "amount": new_order.payed,
+        "created_at": new Date(),
+        "created_from": new_order.creator_id,
+        "customer": new_order.customer,
+        "order": new_order._id,
+        "parent": new_order.parent
+    }
+    console.log(paymentObj)
+    let newPaymentData = new Payment(paymentObj);
+    newPaymentData.save().then((newPayment) => {  
+        callback(null)
+    }).catch((e) => {
+        callback({
+            "status": 0,
+            "message": e
+        }, null)
+    });
+}
+var updateCustomerDebt = (new_order, callback) => {
+    if(new_order.debt > 0){
+        let updateBody = {$inc : {'debt' : new_order.debt}};
+        let query = {_id: new_order.customer};
+        Customer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                callback({
+                    "status": 0,
+                    "message": e
+                })
+            }else{
+                callback(null);
+            }
+        })
+    }else{
+        callback(null);
+    }
+}
 async function checkPromo(body, callback){
     if(body.promo == "false"){
         //no promo
