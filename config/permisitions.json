@@ -35,5 +35,8 @@
     "133":"can create custom product",
     "134":"can edit custom product",
     "135":"can edit full custom product",
-    "136":"can view store info"
+    "136":"can view store info",
+    "137":"can pay out",
+    "138":"can cancel pay out",
+    "139":"can view payments"
 }

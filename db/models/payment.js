@@ -24,7 +24,7 @@ let PaymentSchema = new mongoose.Schema({
 PaymentSchema.methods.toJSON = function(){
 	let Payment = this;
 	let PaymentObject = Payment.toObject();
-	return _.pick(PaymentObject, ['_id','type','sub_type','method','name','branch','amount','created_at','created_from','customer','order','parent']);
+	return _.pick(PaymentObject, ['_id','type','sub_type','method','status','name','branch','amount','created_at','created_from','customer','order','parent']);
 }
 
 PaymentSchema.index({ _id: 1, parent: 1 }, { unique: true });

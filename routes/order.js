@@ -1014,7 +1014,7 @@ var updateCustomerDebtCustomAmount = (customer, amount, callback) => {
 var addNewPayment = (new_order, add_amount, staff, method, callback) => {
     let paymentObj = {
         "type": "in",
-        "sub_type": "order",
+        "sub_type": "debts",
         "method": method,
         "status": "success",
         "name": "Debt pay",
