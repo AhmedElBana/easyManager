@@ -20,11 +20,11 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new order."
         });
     }else{
-        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id','payed','method']);
-        if(!body.customerName || !body.customerPhone || !body.promo || !body.branch_id || !body.payed || !body.method){
+        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id']);
+        if(!body.customerName || !body.customerPhone || !body.promo || !body.branch_id){
             return res.status(400).send({
                 "status": 0,
-                "message": "Missing data, (customerName, customerPhone, promo, branch_id, payed, method) fields are required."
+                "message": "Missing data, (customerName, customerPhone, promo, branch_id) fields are required."
             });
         }else if(!body.products && !body.custom_products){
             return res.status(400).send({
@@ -70,16 +70,28 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                         if(err !== null){
                                                                             return res.status(400).send(err);
                                                                         }else{
-                                                                            //create the order
-                                                                            let final_payed = Number(body.payed);
+                                                                            //create the order  , payed, method
+                                                                            let final_payed;
+                                                                            if(body.payed){
+                                                                                final_payed = Number(body.payed)
+                                                                            }else{
+                                                                                final_payed = Number(body.total)
+                                                                            }
                                                                             if(Number(body.payed) > Number(body.total)){
                                                                                 final_payed = Number(body.total)
                                                                             }
                                                                             let final_debt = Number(body.total) - final_payed;
+
+                                                                            let final_method;
+                                                                            if(body.payed){
+                                                                                final_method = Number(body.method)
+                                                                            }else{
+                                                                                final_method = 'cashe'
+                                                                            }
                                                                             let orderObj = {
                                                                                 "type": "order",
                                                                                 "status": "success",
-                                                                                "method": body.method,
+                                                                                "method": final_method,
                                                                                 "customer": customer._id,
                                                                                 "bill": body.bill,
                                                                                 "subTotal": body.subTotal.toFixed(2),
