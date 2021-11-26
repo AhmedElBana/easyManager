@@ -1915,8 +1915,7 @@ router.get('/list', authenticate, function(req, res, next) {
             filters = {parent: req.user.parent};
         }
         //if(req.query._id){filters._id={ $regex: new RegExp(req.query._id), $options: "i" }}
-        if(req.query.canceled){filters.canceled = req.query.canceled}
-        if(req.query.returned){filters.returned = req.query.returned}
+        if(req.query.status){filters.status = req.query.status}
         if(req.query.creator_id){filters.creator_id = req.query.creator_id}
         if(req.query.branch_id){filters.branch_id = req.query.branch_id}
         if(req.query.createdDateFrom){
@@ -2049,19 +2048,15 @@ router.get('/summary', authenticate, function(req, res, next){
                 let total_returned_count = 0;
                 orders.map((order)=>{
                     total_count += 1;
-                    if(order.canceled){
+                    if(order.status == "success"){
+                        total_success_amount += order.total;
+                        total_success_count += 1;
+                    }else if(order.status == "canceled"){
                         total_canceled_count += 1;
-                    }else{
-                        total_success_amount -= order.amount_out;
-                        total_success_amount += order.amount_in;
-                        if(order.type == "Return"){
-                            total_returned_count += 1;
-                        }else{
-                            total_success_count += 1;
-                        }
+                    }else if(order.status == "returned"){
+                        total_returned_count += 1;
                     }
                 })
-        
                 return res.send({
                     "total_success_amount": total_success_amount,
                     "total_count": total_count,
