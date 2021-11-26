@@ -20,7 +20,7 @@ router.post('/create', authenticate, function(req, res, next) {
             "message": "This user does not have perrmission to create new order."
         });
     }else{
-        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id']);
+        let body = _.pick(req.body, ['customerName','customerPhone','products','custom_products','promo','promo_name','branch_id','payed','method']);
         if(!body.customerName || !body.customerPhone || !body.promo || !body.branch_id){
             return res.status(400).send({
                 "status": 0,
@@ -83,8 +83,8 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                             let final_debt = Number(body.total) - final_payed;
 
                                                                             let final_method;
-                                                                            if(body.payed){
-                                                                                final_method = Number(body.method)
+                                                                            if(body.method){
+                                                                                final_method = body.method
                                                                             }else{
                                                                                 final_method = 'cashe'
                                                                             }

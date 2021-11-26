@@ -181,5 +181,64 @@ router.get('/list', authenticate, function(req, res, next) {
         });
     }
 });
-
+router.get('/summary', authenticate, function(req, res, next){
+    if(!req.query.date_from || !req.query.date_to){
+        res.status(400).send({
+            "status": 0,
+            "message": "Missing data, (date_from, date_to) field is required."
+        });
+    }else{
+        let user = req.user;
+        let body = _.pick(req.query, ['date_from','date_to','branch_id','staff_id']);
+        if(req.user.type == 'admin'){
+            body.parent = req.user._id;
+        }else if(req.user.type == 'staff'){
+            body.parent = req.user.parent;
+        }
+        if(new Date(req.query.date_from) == "Invalid Date" || new Date(body.date_to) == "Invalid Date"){
+            res.status(400).send({
+                "status": 0,
+                "message": "Invalid Date format."
+            });
+        }else{
+            let filters = { 
+                parent: body.parent,
+                created_at: {
+                    $gte: new Date(body.date_from),
+                    $lte: new Date(body.date_to)
+                }
+            };
+            if(body.branch_id){filters.branch = body.branch_id}
+            if(body.staff_id){filters.created_from = body.staff_id}
+            Payment.find(filters)
+            .then((payments) => {
+                let total_net_amount = 0;
+                let total_in = 0;
+                let total_out = 0;
+                payments.map((payment)=>{
+                    if(payment.status == "success"){
+                        if(payment.type == "in"){
+                            total_net_amount += payment.amount;
+                            total_in += payment.amount;
+                        }else if(payment.type == "out"){
+                            total_net_amount -= payment.amount;
+                            total_out += payment.amount;
+                        }
+                    }
+                })
+        
+                return res.send({
+                    "total_net_amount": total_net_amount,
+                    "total_in": total_in,
+                    "total_out": total_out
+                });
+            },(e) => {
+                console.log(e)
+                res.status(400).send({
+                    "message": "error happen while calc orders summary."
+                });
+            });
+        }
+    }
+});
 module.exports = router;
