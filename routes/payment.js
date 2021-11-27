@@ -28,7 +28,7 @@ router.post('/pay_out', authenticate, function(req, res, next) {
             let paymentObj = {
                 "type": "out",
                 "sub_type": "others",
-                "method": "cashe",
+                "method": "cash",
                 "status": "success",
                 "name": body.name,
                 "branch": req.user.branches[0],

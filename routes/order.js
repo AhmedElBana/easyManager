@@ -86,7 +86,7 @@ router.post('/create', authenticate, function(req, res, next) {
                                                                             if(body.method){
                                                                                 final_method = body.method
                                                                             }else{
-                                                                                final_method = 'cashe'
+                                                                                final_method = 'cash'
                                                                             }
                                                                             let orderObj = {
                                                                                 "type": "order",

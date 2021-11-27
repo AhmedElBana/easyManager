@@ -9,7 +9,7 @@ var ObjectId = require('mongodb').ObjectID;
 let OrderSchema = new mongoose.Schema({
 	type: { type: String, trim: true, required: true, enum: ['order','return']},
 	status: { type: String, trim: true, required: true, enum: ['success','canceled','returned']},
-	method: { type: String, required: true, trim: true, enum: ['cashe','card'] },
+	method: { type: String, required: true, trim: true, enum: ['cash','card'] },
 	customer: {type: ObjectId, ref: 'Customer'},
 	products: { type: Array },
 	custom_products: { type: Array },
