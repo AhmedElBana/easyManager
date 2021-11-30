@@ -1245,11 +1245,8 @@ router.post('/return', authenticate, function(req, res, next) {
                     }
                 }
             },(e) => {
-                if(e.name && e.name == "CastError"){
-                    res.status(400).send({"message": "Wrong order_id value."});
-                }else{
-                    res.status(400).send({"message": "error happen while query order data."});
-                }
+                if(e.name && e.name == "CastError"){res.status(400).send({"message": "Wrong order_id value."});}
+                else{res.status(400).send({"message": "error happen while query order data."});}
             });
         }
     }
@@ -1277,6 +1274,7 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                         if(err !== null){
                             return callback(err);
                         }else{
+                            //back them to the current branch && cancel custom
                             console.log("back them to the current branch && cancel custom")
                         }
                     })
@@ -1284,7 +1282,6 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
             })
         }
     })
-    //back them to the current branch && cancel custom
 }
 var check_custom_in_order = (order, products, parent, callback) => {
     //check all products in order
@@ -1400,31 +1397,19 @@ var checkSelectedBranch = (user, branch_id, parent, callback) => {
     Branch.findOne({_id: branch_id, parent: parent})
     .then((branch) => {
         if(!branch){
-            callback({
-                "status": 0,
-                "message": "wrong branch_id."
-            })
+            callback({"message": "wrong branch_id."})
         }else{
             if(!user.branches.includes(branch_id) && user.type != "admin"){
-                callback({
-                    "status": 0,
-                    "message": "This user don't have access to this branch."
-                })
+                callback({"message": "This user don't have access to this branch."})
             }else{
                 callback(null)
             }
         }
     },(e) => {
         if(e.name && e.name == 'CastError'){
-            callback({
-                "status": 0,
-                "message": "wrong branch_id."
-            })
+            callback({"message": "wrong branch_id."})
         }else{
-            callback({
-                "status": 0,
-                "message": "error happen while query branch data."
-            })
+            callback({"message": "error happen while query branch data."})
         }
     });
 }
