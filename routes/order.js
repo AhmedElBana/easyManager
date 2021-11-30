@@ -859,7 +859,7 @@ async function cancelCustomProducts(custom_products, parent_id, callback) {
         let fountError = false;
         let productsIds = [];
         custom_products.map((product)=>{
-            productsIds.push(product.product_id);
+            productsIds.push(product._id);
         })
         Custom_product.find({'_id': { $in: productsIds}, 'parent': parent_id})
         .then((custom_products) => {
@@ -1235,7 +1235,8 @@ router.post('/return', authenticate, function(req, res, next) {
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
-        
+                                                //handle pre/new orders and customer debt
+                                                console.log("handle pre/new orders and customer debt")
                                             }
                                         })
                                     }
@@ -1278,8 +1279,13 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                                 if(err !== null){
                                     return callback(err);
                                 }else{
-                                    //back them to the current branch && cancel custom
-                                    console.log("back them to the current branch && cancel custom")
+                                    cancelCustomProducts(custom, parent, function(err){
+                                        if(err !== null){
+                                            res.status(400).send(err);
+                                        }else{
+                                            return callback(null);
+                                        }
+                                    })
                                 }
                             })
                         }
