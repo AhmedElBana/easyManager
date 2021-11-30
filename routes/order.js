@@ -1918,6 +1918,7 @@ router.get('/list', authenticate, function(req, res, next) {
         if(req.query.status){filters.status = req.query.status}
         if(req.query.creator_id){filters.creator_id = req.query.creator_id}
         if(req.query.branch_id){filters.branch_id = req.query.branch_id}
+        if(req.query.customer_id){filters.customer = req.query.customer_id}
         if(req.query.createdDateFrom){
             if(new Date(req.query.createdDateFrom) == "Invalid Date"){
                 errHappen = true;
