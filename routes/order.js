@@ -11,6 +11,7 @@ let {Store} = require('../db/models/store');
 let {Payment} = require('../db/models/payment');
 let {authenticate} = require('../middleware/authenticate');
 let {single_sms} = require('./../services/sms');
+const { stubFalse } = require('lodash');
 
 /* Create new feature. */
 router.post('/create', authenticate, function(req, res, next) {
@@ -1201,6 +1202,233 @@ var updateCancelCustomerDebt = (new_order, callback) => {
 }
 /* return order. */
 router.post('/return', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('126')){
+        res.status(400).send({"message": "This user does not have perrmission to return order."});
+    }else{
+        let body = _.pick(req.body, ['order_id','branch_id','removed_products']);
+        if(!body.order_id || !body.branch_id || !body.removed_products){
+            res.status(400).send({"message": "Missing data, (order_id, branch_id, removed_products) field is required."});
+        }else{
+            let user = req.user;
+            if(user.type == 'admin'){body.parent = user._id;}
+            else if(user.type == 'staff'){body.parent = user.parent;}
+            let query = {_id: body.order_id, parent: body.parent};
+            Order.findOne(query)
+            .then((order) => {
+                if(!order){
+                    res.status(400).send({"message": "can't find any order with this order_id."});
+                }else{
+                    if(order.status == "canceled"){
+                        res.status(400).send({"message": "This order can't be return because it canceled before."});
+                    }else if(order.status == "returned"){
+                        res.status(400).send({"message": "This order can't be return because it returned before."});
+                    }else{
+                        checkStoreConditions(body, order, function(err, store){
+                            if(err !== null){
+                                res.status(400).send(err);
+                            }else{
+                                checkSelectedBranch(user, body.branch_id, body.parent, function(err){
+                                    if(err !== null){
+                                        res.status(400).send(err);
+                                    }else{
+                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err){
+                                            if(err !== null){
+                                                res.status(400).send(err);
+                                            }else{
+        
+                                            }
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                    }
+                }
+            },(e) => {
+                if(e.name && e.name == "CastError"){
+                    res.status(400).send({"message": "Wrong order_id value."});
+                }else{
+                    res.status(400).send({"message": "error happen while query order data."});
+                }
+            });
+        }
+    }
+});
+var handle_removed_products = (order, removed_products, current_branch, parent, callback) => {
+    //check removed roducts in the order && custom is not acceted
+    check_removed_products_format(removed_products, function(err){
+        if(err !== null){
+            return callback(err);
+        }else{
+            let normal = [];
+            let custom = []
+            removed_products.map((current_product)=>{
+                if(current_product.is_custom){
+                    custom.push(current_product)
+                }else{
+                    normal.push(current_product)
+                }
+            })
+            check_prod_in_order(order, normal, function(err){
+                if(err !== null){
+                    return callback(err);
+                }else{
+                    check_custom_in_order(order, custom, parent, function(err){
+                        if(err !== null){
+                            return callback(err);
+                        }else{
+                            console.log("back them to the current branch && cancel custom")
+                        }
+                    })
+                }
+            })
+        }
+    })
+    //back them to the current branch && cancel custom
+}
+var check_custom_in_order = (order, products, parent, callback) => {
+    //check all products in order
+    let products_err = false;
+    let err_message = "";
+    let order_prod_obj = {};
+    let products_id_arr = [];
+    order.custom_products.map((ele)=>{
+        order_prod_obj[ele.product_id] = true;
+        products_id_arr.push(ele.product_id)
+    })
+    products.map((ele)=>{
+        if(!order_prod_obj[ele._id]){
+            products_err = true;
+            err_message = `custom product with _id (${ele._id}) is not found in the order.`;
+        }
+    })
+    if(products_err){
+        let err = {"message": err_message}
+        return callback(err);
+    }else{
+        //check if custom products still not in progress
+        Custom_product.find({'_id': { $in: products_id_arr}, 'status': "assigned", 'parent': parent})
+        .then((products) => {
+            if(products.length !== products_id_arr.length){
+                fountError = true;
+                let err = {"message": "Can't return custom product with status (accepted) or (ready)"};
+                return callback(err)
+            }else{
+                return callback(null)
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
+    }
+}
+var check_prod_in_order = (order, products, callback) => {
+    //check all products in order
+    let products_err = false;
+    let err_message = "";
+    let order_prod_obj = {};
+    order.products.map((ele)=>{
+        order_prod_obj[ele.product_id] = ele.quantity;
+    })
+    products.map((ele)=>{
+        if(!order_prod_obj[ele._id]){
+            products_err = true;
+            err_message = `product with _id (${ele._id}) is not found in the order.`;
+        }else if(order_prod_obj[ele._id] < ele.quantity){
+            products_err = true;
+            err_message = `can't find enough quantity from htis product (${ele._id}) in the order, max quantity is ${order_prod_obj[ele._id]}.`;
+        }
+    })
+    if(products_err){
+        let err = {"message": err_message}
+        return callback(err);
+    }else{
+        return callback(null);
+    }
+}
+var check_removed_products_format = (products, callback) => {
+    let fountError = false;
+    if(typeof(products[0]) !== 'object'){
+        if(!(typeof(products) === 'object' && products.length === 0)){
+            fountError = true;
+            let err = {"message": "Wrong data (removed_products) must be array of objects."}
+            return callback(err);
+        }
+    }else{
+        products.map((product)=>{
+            if(!product._id){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside removed_products must have (_id) field."
+                }
+                return callback(err);
+            }
+            if((!product.quantity || isNaN(product.quantity)) && product.is_custom == false){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each normal product inside removed_products must have (quantity) field with numeric value."
+                }
+                return callback(err);
+            }
+            if(product.is_custom != false && product.is_custom != true){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "each object inside removed_products must have (is_custom) field with true/false value."
+                }
+                return callback(err);
+            }
+        })
+    }
+    if(!fountError){return callback(null);}
+}
+var checkSelectedBranch = (user, branch_id, parent, callback) => {
+    Branch.findOne({_id: branch_id, parent: parent})
+    .then((branch) => {
+        if(!branch){
+            callback({
+                "status": 0,
+                "message": "wrong branch_id."
+            })
+        }else{
+            if(!user.branches.includes(branch_id) && user.type != "admin"){
+                callback({
+                    "status": 0,
+                    "message": "This user don't have access to this branch."
+                })
+            }else{
+                callback(null)
+            }
+        }
+    },(e) => {
+        if(e.name && e.name == 'CastError'){
+            callback({
+                "status": 0,
+                "message": "wrong branch_id."
+            })
+        }else{
+            callback({
+                "status": 0,
+                "message": "error happen while query branch data."
+            })
+        }
+    });
+}
+router.post('/return-old', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('126')){
         res.status(400).send({
             "status": 0,
