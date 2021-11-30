@@ -1274,14 +1274,76 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                         if(err !== null){
                             return callback(err);
                         }else{
-                            //back them to the current branch && cancel custom
-                            console.log("back them to the current branch && cancel custom")
+                            back_prod_to_branch(normal, current_branch, parent, function(err){
+                                if(err !== null){
+                                    return callback(err);
+                                }else{
+                                    //back them to the current branch && cancel custom
+                                    console.log("back them to the current branch && cancel custom")
+                                }
+                            })
                         }
                     })
                 }
             })
         }
     })
+}
+var back_prod_to_branch = (productsArr, branch_id, parent, callback) => {
+    if(productsArr && productsArr.length > 0){
+        let fountError = false;
+        let productsIds = [];
+        let productsMap = {};
+        productsArr.map((product)=>{
+            productsIds.push(product._id);
+            productsMap[product._id] = Number(product.quantity);
+        })
+        Product.find({'_id': { $in: productsIds}, 'parent': parent})
+        .then((products) => {
+            if(products.length !== productsIds.length){
+                fountError = true;
+                let err = {
+                    "status": 0,
+                    "message": "Wrong data: can't find some products, please check (_id) for each product."
+                };
+                return callback(err)
+            }else{
+                let idWithFullMap = {};
+                products.map((singleProduct) => {
+                    idWithFullMap[singleProduct._id] = singleProduct.map;
+                })
+                let newIdWithFullMap = {...idWithFullMap}
+                Object.keys(productsMap).map((product_id) => {
+                    if(newIdWithFullMap[product_id][branch_id]){
+                        newIdWithFullMap[product_id][branch_id] += Number(productsMap[product_id]);
+                    }else{
+                        newIdWithFullMap[product_id][branch_id] = Number(productsMap[product_id]);
+                    }
+                })
+                Object.keys(newIdWithFullMap).map((product_id)=>{
+                    updateOneProduct(product_id,newIdWithFullMap[product_id]);
+                })
+                if(!fountError){return callback(null);}
+            }
+        },(e) => {
+            fountError = true;
+            let err;
+            if(e.name && e.name == 'CastError'){
+                err = {
+                    "status": 0,
+                    "message": "Wrong value: (" + e.value + ") is not valid product id."
+                };
+            }else{
+                err = {
+                    "status": 0,
+                    "message": "error hanppen while query products data."
+                };
+            }
+            return callback(err)
+        });
+    }else{
+        return callback(null);
+    } 
 }
 var check_custom_in_order = (order, products, parent, callback) => {
     //check all products in order
