@@ -1237,6 +1237,8 @@ router.post('/return', authenticate, function(req, res, next) {
                                             }else{
                                                 //handle pre/new orders and customer debt
                                                 console.log("handle pre/new orders and customer debt")
+                                                let final_debt = - Number(order.debt)
+                                                console.log(final_debt)
                                             }
                                         })
                                     }
@@ -1359,9 +1361,9 @@ var check_custom_in_order = (order, products, parent, callback) => {
     let products_id_arr = [];
     order.custom_products.map((ele)=>{
         order_prod_obj[ele.product_id] = true;
-        products_id_arr.push(ele.product_id)
     })
     products.map((ele)=>{
+        products_id_arr.push(ele._id)
         if(!order_prod_obj[ele._id]){
             products_err = true;
             err_message = `custom product with _id (${ele._id}) is not found in the order.`;
@@ -1371,9 +1373,12 @@ var check_custom_in_order = (order, products, parent, callback) => {
         let err = {"message": err_message}
         return callback(err);
     }else{
+        console.log(products_id_arr)
         //check if custom products still not in progress
         Custom_product.find({'_id': { $in: products_id_arr}, 'status': "assigned", 'parent': parent})
         .then((products) => {
+            console.log(products)
+            console.log(products.length !== products_id_arr.length)
             if(products.length !== products_id_arr.length){
                 fountError = true;
                 let err = {"message": "Can't return custom product with status (accepted) or (ready)"};
