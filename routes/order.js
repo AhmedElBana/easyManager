@@ -1231,14 +1231,16 @@ router.post('/return', authenticate, function(req, res, next) {
                                     if(err !== null){
                                         res.status(400).send(err);
                                     }else{
-                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err){
+                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products){
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
                                                 //handle pre/new orders and customer debt
                                                 console.log("handle pre/new orders and customer debt")
                                                 let final_debt = - Number(order.debt)
-                                                console.log(final_debt)
+                                                console.log(final_debt);
+                                                console.log("########################")
+                                                console.log(remains_products)
                                             }
                                         })
                                     }
@@ -1269,7 +1271,7 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                     normal.push(current_product)
                 }
             })
-            check_prod_in_order(order, normal, function(err){
+            check_prod_in_order(order, normal, function(err, remains_products){
                 if(err !== null){
                     return callback(err);
                 }else{
@@ -1285,7 +1287,7 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            return callback(null);
+                                            return callback(null, remains_products);
                                         }
                                     })
                                 }
@@ -1406,12 +1408,14 @@ var check_custom_in_order = (order, products, parent, callback) => {
 }
 var check_prod_in_order = (order, products, callback) => {
     //check all products in order
+    let remains_products = [];
     let products_err = false;
     let err_message = "";
     let order_prod_obj = {};
     order.products.map((ele)=>{
         order_prod_obj[ele.product_id] = ele.quantity;
     })
+    let removed_obj = {};
     products.map((ele)=>{
         if(!order_prod_obj[ele._id]){
             products_err = true;
@@ -1419,13 +1423,24 @@ var check_prod_in_order = (order, products, callback) => {
         }else if(order_prod_obj[ele._id] < ele.quantity){
             products_err = true;
             err_message = `can't find enough quantity from htis product (${ele._id}) in the order, max quantity is ${order_prod_obj[ele._id]}.`;
+        }else{
+            removed_obj[[ele._id]] = ele.quantity
         }
     })
     if(products_err){
         let err = {"message": err_message}
         return callback(err);
     }else{
-        return callback(null);
+        order.products.map((pro)=>{
+            if(!removed_obj[pro.product_id]){
+                remains_products.push(pro)
+            }else if(removed_obj[pro.product_id] && (pro.quantity - removed_obj[pro.product_id] > 0)){
+                let current_pro = {...pro}
+                current_pro.quantity -= removed_obj[pro.product_id];
+                remains_products.push(current_pro)
+            }
+        })
+        return callback(null, remains_products);
     }
 }
 var check_removed_products_format = (products, callback) => {
