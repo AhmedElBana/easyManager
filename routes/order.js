@@ -1205,9 +1205,9 @@ router.post('/return', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('126')){
         res.status(400).send({"message": "This user does not have perrmission to return order."});
     }else{
-        let body = _.pick(req.body, ['order_id','branch_id','removed_products']);
-        if(!body.order_id || !body.branch_id || !body.removed_products){
-            res.status(400).send({"message": "Missing data, (order_id, branch_id, removed_products) field is required."});
+        let body = _.pick(req.body, ['order_id','branch_id','removed_products','method']);
+        if(!body.order_id || !body.branch_id || !body.removed_products || !body.method){
+            res.status(400).send({"message": "Missing data, (order_id, branch_id, removed_products, method) field is required."});
         }else{
             let user = req.user;
             if(user.type == 'admin'){body.parent = user._id;}
@@ -1231,20 +1231,11 @@ router.post('/return', authenticate, function(req, res, next) {
                                     if(err !== null){
                                         res.status(400).send(err);
                                     }else{
-                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount){
+                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount, remains_custom_bill){
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
                                                 //handle pre/new orders and customer debt
-                                                
-                                                // console.log("---------------------------------------")
-                                                // console.log("handle pre/new orders and customer debt")
-                                                // console.log("########################")
-                                                // console.log(remains_products)
-                                                // console.log(remains_products_amount)
-                                                // console.log("########################")
-                                                // console.log(remains_custom)
-                                                // console.log(remains_custom_amount)
                                                 let final_new_amount = remains_products_amount + remains_custom_amount;
                                                 let new_order_payed;
                                                 let new_order_debt;
@@ -1261,7 +1252,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                 }
                                                 //set order as returned
                                                 let query = {_id: order._id, parent: body.parent};
-                                                let newData = {returned: true, returnedDate: new Date()}
+                                                let newData = {status: "returned"}
                                                 Order.findOneAndUpdate(query,newData, { new: true })
                                                 .then(updatedProduct => {
                                                     //update customer debt
@@ -1271,12 +1262,13 @@ router.post('/return', authenticate, function(req, res, next) {
                                                         }else{
                                                             //create the new order
                                                             let orderObj = {
-                                                                "type": "Return",
+                                                                "type": "return",
                                                                 "status": "success",
+                                                                "method": body.method,
                                                                 "customer": order.customer,
                                                                 "products": remains_products,
                                                                 "custom_products": remains_custom,
-                                                                "bill": [...remains_products_bill],
+                                                                "bill": [...remains_products_bill, ...remains_custom_bill],
                                                                 "prevOrderSubTotal": order.subTotal,
                                                                 "prevOrderDiscountValue": order.discountValue,
                                                                 "prevOrderTotal": order.total,
@@ -1293,13 +1285,49 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                 "parentOrder": order._id,
                                                                 "parent": body.parent
                                                             }
-                                                            console.log(orderObj)
-                                                            //if payout != 0 make payout for the current order/cutomer/staff
+                                                            let newOrderData = new Order(orderObj);
+                                                            newOrderData.save().then((newOrder) => {  
+                                                                //if payout != 0 make payout for the current order/cutomer/staff
+                                                                customer_Pay_out(newOrder._id, pay_out, req.user._id, newOrder.customer, body.branch_id, body.method, newOrder.parent, function(err){
+                                                                    if(err !== null){
+                                                                        res.status(400).send(err);
+                                                                    }else{
+                                                                        checkReturnCustomer(newOrder.customer, newOrder.parent, function(err, customer){
+                                                                            if(err !== null){
+                                                                                res.status(400).send(err);
+                                                                            }else{
+                                                                                single_sms(
+                                                                                    newOrder.parent,
+                                                                                    "Thanks for shopping with us.\nYour Returned Amount is " + pay_out + "EGP with " + new_order_debt + "EGP Debt.\nVisit https://tradket.com/bill/" + newOrder._id + " to check order bill after return.",
+                                                                                    customer.phoneNumber,
+                                                                                    function(error, data){
+                                                                                        if (error){
+                                                                                            return res.status(201).send({
+                                                                                                "sms": "fail",
+                                                                                                "data": newOrder
+                                                                                            });
+                                                                                        }else{
+                                                                                            return res.status(201).send({
+                                                                                                "sms": "success",
+                                                                                                "data": newOrder
+                                                                                            });
+                                                                                        }
+                                                                                    }
+                                                                                )
+                                                                            }
+                                                                        })
+                                                                    }
+                                                                })
+                                                            }).catch((e) => {
+                                                                res.status(400).send({
+                                                                    "status": 0,
+                                                                    "message": e
+                                                                });
+                                                            });
                                                         }
                                                     })
                                                 })
                                                 .catch(err => {
-                                                    console.log(err)
                                                     res.status(400).send({
                                                         "status": 0,
                                                         "message": "error while query order data."
@@ -1320,6 +1348,35 @@ router.post('/return', authenticate, function(req, res, next) {
         }
     }
 });
+var customer_Pay_out = (order_id, add_amount, staff, customer, branch_id, method, parent, callback) => {
+    if(add_amount > 0){
+        let paymentObj = {
+            "type": "out",
+            "sub_type": "return",
+            "method": method,
+            "status": "success",
+            "name": "Order Return",
+            "branch": branch_id,
+            "amount": Number(add_amount),
+            "created_at": new Date(),
+            "created_from": staff,
+            "customer": customer,
+            "order": order_id,
+            "parent": parent
+        }
+        let newPaymentData = new Payment(paymentObj);
+        newPaymentData.save().then((newPayment) => {  
+            callback(null)
+        }).catch((e) => {
+            callback({
+                "status": 0,
+                "message": e
+            }, null)
+        });
+    }else{
+        callback(null)
+    }
+}
 var addCustomerDebt = (customer_id, new_debt, callback) => {
     if(new_debt != 0){
         let updateBody = {$inc : {'debt' : new_debt}};
@@ -1357,7 +1414,7 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                 if(err !== null){
                     return callback(err);
                 }else{
-                    check_custom_in_order(order, custom, parent, function(err, remains_custom, remains_custom_amount){
+                    check_custom_in_order(order, custom, parent, function(err, remains_custom, remains_custom_amount, remains_custom_bill){
                         if(err !== null){
                             return callback(err);
                         }else{
@@ -1369,7 +1426,7 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            return callback(null, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount);
+                                            return callback(null, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount, remains_custom_bill);
                                         }
                                     })
                                 }
@@ -1440,6 +1497,7 @@ var back_prod_to_branch = (productsArr, branch_id, parent, callback) => {
 var check_custom_in_order = (order, products, parent, callback) => {
     //check all products in order
     let remains_products = [];
+    let remains_products_bill = [];
     let remains_products_amount = 0;
     let products_err = false;
     let err_message = "";
@@ -1449,8 +1507,10 @@ var check_custom_in_order = (order, products, parent, callback) => {
         order_prod_obj[ele.product_id] = true;
     })
     let order_prod_price_obj = {};
+    let order_prod_full_obj = {};
     order.bill.map((ele)=>{
         order_prod_price_obj[ele._id] = Number(ele.price);
+        order_prod_full_obj[ele._id] = ele;
     })
     products.map((ele)=>{
         products_id_arr.push(ele._id)
@@ -1475,9 +1535,10 @@ var check_custom_in_order = (order, products, parent, callback) => {
                     if(!products_id_arr.includes(pro.product_id)){
                         remains_products.push(pro)
                         remains_products_amount += order_prod_price_obj[pro.product_id]
+                        remains_products_bill.push(order_prod_full_obj[pro.product_id])
                     }
                 })
-                return callback(null, remains_products, remains_products_amount)
+                return callback(null, remains_products, remains_products_amount, remains_products_bill)
             }
         },(e) => {
             fountError = true;
@@ -1809,8 +1870,8 @@ router.post('/return-old', authenticate, function(req, res, next) {
         }
     }
 });
-var checkReturnCustomer = (body, order, callback) => {
-    Customer.findOne({_id: order.customer, parent: body.parent})
+var checkReturnCustomer = (customer, parent, callback) => {
+    Customer.findOne({_id: customer, parent: parent})
     .then((customer) => {
         if(!customer){
             callback({
