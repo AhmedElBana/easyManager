@@ -1231,17 +1231,80 @@ router.post('/return', authenticate, function(req, res, next) {
                                     if(err !== null){
                                         res.status(400).send(err);
                                     }else{
-                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products, remains_products_amount){
+                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount){
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
                                                 //handle pre/new orders and customer debt
-                                                console.log("handle pre/new orders and customer debt")
-                                                let final_debt = - Number(order.debt)
-                                                console.log(final_debt);
-                                                console.log("########################")
-                                                console.log(remains_products)
-                                                console.log(remains_products_amount)
+                                                
+                                                // console.log("---------------------------------------")
+                                                // console.log("handle pre/new orders and customer debt")
+                                                // console.log("########################")
+                                                // console.log(remains_products)
+                                                // console.log(remains_products_amount)
+                                                // console.log("########################")
+                                                // console.log(remains_custom)
+                                                // console.log(remains_custom_amount)
+                                                let final_new_amount = remains_products_amount + remains_custom_amount;
+                                                let new_order_payed;
+                                                let new_order_debt;
+                                                let final_customer_debt = - Number(order.debt);
+                                                let pay_out = 0;
+                                                if(final_new_amount >= order.payed){
+                                                    new_order_payed = order.payed;
+                                                    new_order_debt = final_new_amount - order.payed;
+                                                    final_customer_debt += new_order_debt
+                                                }else{
+                                                    new_order_payed = final_new_amount;
+                                                    new_order_debt = 0;
+                                                    pay_out = order.payed - final_new_amount;
+                                                }
+                                                //set order as returned
+                                                let query = {_id: order._id, parent: body.parent};
+                                                let newData = {returned: true, returnedDate: new Date()}
+                                                Order.findOneAndUpdate(query,newData, { new: true })
+                                                .then(updatedProduct => {
+                                                    //update customer debt
+                                                    addCustomerDebt(updatedProduct.customer, final_customer_debt, function(err){
+                                                        if(err !== null){
+                                                            return callback(err);
+                                                        }else{
+                                                            //create the new order
+                                                            let orderObj = {
+                                                                "type": "Return",
+                                                                "status": "success",
+                                                                "customer": order.customer,
+                                                                "products": remains_products,
+                                                                "custom_products": remains_custom,
+                                                                "bill": [...remains_products_bill],
+                                                                "prevOrderSubTotal": order.subTotal,
+                                                                "prevOrderDiscountValue": order.discountValue,
+                                                                "prevOrderTotal": order.total,
+                                                                "subTotal": final_new_amount,
+                                                                "discountValue": 0,
+                                                                "total": final_new_amount,
+                                                                "payed": new_order_payed,
+                                                                "debt": new_order_debt,
+                                                                "discountValue": 0,
+                                                                "promo": false,
+                                                                "createdDate": new Date(),
+                                                                "branch_id": body.branch_id,
+                                                                "creator_id": req.user._id,
+                                                                "parentOrder": order._id,
+                                                                "parent": body.parent
+                                                            }
+                                                            console.log(orderObj)
+                                                            //if payout != 0 make payout for the current order/cutomer/staff
+                                                        }
+                                                    })
+                                                })
+                                                .catch(err => {
+                                                    console.log(err)
+                                                    res.status(400).send({
+                                                        "status": 0,
+                                                        "message": "error while query order data."
+                                                    });
+                                                });
                                             }
                                         })
                                     }
@@ -1257,6 +1320,24 @@ router.post('/return', authenticate, function(req, res, next) {
         }
     }
 });
+var addCustomerDebt = (customer_id, new_debt, callback) => {
+    if(new_debt != 0){
+        let updateBody = {$inc : {'debt' : new_debt}};
+        let query = {_id: customer_id};
+        Customer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+            if(e){
+                callback({
+                    "status": 0,
+                    "message": e
+                })
+            }else{
+                callback(null);
+            }
+        })
+    }else{
+        callback(null);
+    }
+}
 var handle_removed_products = (order, removed_products, current_branch, parent, callback) => {
     //check removed roducts in the order && custom is not acceted
     check_removed_products_format(removed_products, function(err){
@@ -1272,11 +1353,11 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                     normal.push(current_product)
                 }
             })
-            check_prod_in_order(order, normal, function(err, remains_products, remains_products_amount){
+            check_prod_in_order(order, normal, function(err, remains_products, remains_products_amount, remains_products_bill){
                 if(err !== null){
                     return callback(err);
                 }else{
-                    check_custom_in_order(order, custom, parent, function(err){
+                    check_custom_in_order(order, custom, parent, function(err, remains_custom, remains_custom_amount){
                         if(err !== null){
                             return callback(err);
                         }else{
@@ -1288,7 +1369,7 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            return callback(null, remains_products, remains_products_amount);
+                                            return callback(null, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount);
                                         }
                                     })
                                 }
@@ -1358,12 +1439,18 @@ var back_prod_to_branch = (productsArr, branch_id, parent, callback) => {
 }
 var check_custom_in_order = (order, products, parent, callback) => {
     //check all products in order
+    let remains_products = [];
+    let remains_products_amount = 0;
     let products_err = false;
     let err_message = "";
     let order_prod_obj = {};
     let products_id_arr = [];
     order.custom_products.map((ele)=>{
         order_prod_obj[ele.product_id] = true;
+    })
+    let order_prod_price_obj = {};
+    order.bill.map((ele)=>{
+        order_prod_price_obj[ele._id] = Number(ele.price);
     })
     products.map((ele)=>{
         products_id_arr.push(ele._id)
@@ -1376,18 +1463,21 @@ var check_custom_in_order = (order, products, parent, callback) => {
         let err = {"message": err_message}
         return callback(err);
     }else{
-        console.log(products_id_arr)
         //check if custom products still not in progress
         Custom_product.find({'_id': { $in: products_id_arr}, 'status': "assigned", 'parent': parent})
         .then((products) => {
-            console.log(products)
-            console.log(products.length !== products_id_arr.length)
             if(products.length !== products_id_arr.length){
                 fountError = true;
                 let err = {"message": "Can't return custom product with status (accepted) or (ready)"};
                 return callback(err)
             }else{
-                return callback(null)
+                order.custom_products.map((pro)=>{
+                    if(!products_id_arr.includes(pro.product_id)){
+                        remains_products.push(pro)
+                        remains_products_amount += order_prod_price_obj[pro.product_id]
+                    }
+                })
+                return callback(null, remains_products, remains_products_amount)
             }
         },(e) => {
             fountError = true;
@@ -1410,6 +1500,7 @@ var check_custom_in_order = (order, products, parent, callback) => {
 var check_prod_in_order = (order, products, callback) => {
     //check all products in order
     let remains_products = [];
+    let remains_products_bill = [];
     let remains_products_amount = 0;
     let products_err = false;
     let err_message = "";
@@ -1418,8 +1509,10 @@ var check_prod_in_order = (order, products, callback) => {
         order_prod_obj[ele.product_id] = ele.quantity;
     })
     let order_prod_price_obj = {};
+    let order_prod_full_obj = {};
     order.bill.map((ele)=>{
         order_prod_price_obj[ele._id] = Number(ele.price);
+        order_prod_full_obj[ele._id] = ele;
     })
     let removed_obj = {};
     products.map((ele)=>{
@@ -1441,14 +1534,22 @@ var check_prod_in_order = (order, products, callback) => {
             if(!removed_obj[pro.product_id]){
                 remains_products.push(pro)
                 remains_products_amount += pro.quantity * order_prod_price_obj[pro.product_id]
+                remains_products_bill.push(order_prod_full_obj[pro.product_id])
             }else if(removed_obj[pro.product_id] && (pro.quantity - removed_obj[pro.product_id] > 0)){
                 let current_pro = {...pro}
                 current_pro.quantity -= removed_obj[pro.product_id];
                 remains_products.push(current_pro)
                 remains_products_amount += current_pro.quantity * order_prod_price_obj[current_pro.product_id]
+                remains_products_bill.push({
+                    "_id" : current_pro.product_id,
+                    "name" : order_prod_full_obj[current_pro.product_id].name,
+                    "quantity" : current_pro.quantity,
+                    "price" : order_prod_full_obj[current_pro.product_id].price,
+                    "total" : Number(current_pro.quantity) * Number(order_prod_full_obj[current_pro.product_id].price)
+                })
             }
         })
-        return callback(null, remains_products, remains_products_amount);
+        return callback(null, remains_products, remains_products_amount, remains_products_bill);
     }
 }
 var check_removed_products_format = (products, callback) => {
