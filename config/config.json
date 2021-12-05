@@ -2,11 +2,20 @@
     "test": {
         "PORT": 3001,
         "MONGODB_URL": "mongodb://localhost:27017/easyManager",
-        "JWT_SECRET": "hjn8g4j8asd98+a5d895*/7d/*asd5/*asd5as4d-0<da1n"
+        "JWT_SECRET": "hjn8g4j8asd98+a5d895*/7d/*asd5/*asd5as4d-0<da1n",
+        "GoogleAppPass": "kppswilekfzoaaju",
+
+        "SMS_USER": "D2MwPrBp",
+        "SMS_PASS": "YmQdEKoZqS",
+        "SMS_SENDER": "superDoctor",
+        "FCM_SERVER_KEY" : "AAAAi65C3d8:APA91bE6Bopry02CxVgCJeONMKxcL54PPV31EiPCWQVetSM9UOAtBpRxaYJggViaMeET4fkPBDuiKEn-gQ4WTDo40mTfGOk1BVExyrAkmLqYXQy8v_CyVwc0hilKIRmwn2wgApePOIsx",
+        "FCM_SENDER_ID": "599924071903",
+        "FCM_SERVER_KEY_CUSTOMER" : "AAAASF2OIhg:APA91bEXUqjTFZHE9ARkgnJeD1fC99UyOHcm4y5rqObD3YS5W64Z-n7GTKMm_VuzFsL83-NgXIumJNaqIFytk2zuYHuO7ZFMzMcKLiilOKxYTPX9neE1B0gyAkNIVK7fxlDzbxryUdbd",
+        "FCM_SENDER_ID_CUSTOMER": "310807241240"
     },
     "development": {
         "PORT": 3001,
-        "MONGODB_URL": "mongodb://localhost:27017/easyManager",
+        "MONGODB_URL": "mongodb+srv://tradket-droplet:9Gw3pQsI72k186W4@tradket-89b7a9a0.mongo.ondigitalocean.com/easyManager?authSource=admin&replicaSet=tradket&tls=true&tlsCAFile=~/access/ca-certificate.cer",
         "JWT_SECRET": "hjn8g4j8asd98+a5d895*/7d/*asd5/*asd5as4d-0<da1n",
         "GoogleAppPass": "kppswilekfzoaaju",
 

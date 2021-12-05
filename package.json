@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www",
+    "start": "NODE_ENV=development node ./bin/www",
+    "local": "node ./bin/www",
     "test": "mocha  ./test/tradket.test.js",
     "test-watch": "nodemon --exec \"npm test\""
   },
