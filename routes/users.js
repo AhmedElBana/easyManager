@@ -245,38 +245,6 @@ router.post('/forgotpassword', function(req, res, next) {
       }
   });
 
-  router.post('/changepassword_backdoor_all', function(req, res, next) {
-    let body = _.pick(req.body, ['_id', 'password']);
-      let user = req.user;
-      if(body.password){
-          let query = {"_id": body._id};
-          let newData = {"password": body.password}
-          User.findOneAndUpdate(query,newData, { new: true })
-          .then(response => {
-              if(response){
-                  res.send({
-                      "status": 1
-                  });
-              }else{
-                  res.status(400).send({
-                      "status": 0,
-                      "message": "Invalid data."
-                  });
-              }
-          })
-          .catch(err => {
-              res.status(400).send({
-                  "status": 0,
-                  "message": "error while query user data."
-              });
-          });
-      }else{
-          res.status(400).send({
-              "status": 0,
-              "message": "missing data: password field is required."
-          });
-      }
-  });
 /* Add new admin user. */
 router.post('/admin/create', function(req, res, next) {
   let body = _.pick(req.body, ['name','language','email','phoneNumber','password','storeName','storePhoneNumber']);
