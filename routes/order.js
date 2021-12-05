@@ -449,7 +449,8 @@ async function checkProductsAvailability(body, callback){
                             "name": singleProduct.name,
                             "quantity": productsQuantityMap[singleProduct._id.toString()],
                             "price": single_final_price,
-                            "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price
+                            "total": productsQuantityMap[singleProduct._id.toString()] * single_final_price,
+                            "is_custom": false
                         })
                         totalPrice += productsQuantityMap[singleProduct._id.toString()] * single_final_price;
                     })
@@ -518,7 +519,8 @@ async function checkCustomProductsAvailability(body, callback){
                             "name": singleProduct.name,
                             "quantity": singleProduct.quantity,
                             "price": singleProduct.price,
-                            "total": singleProduct.price
+                            "total": singleProduct.price,
+                            "is_custom": true
                         })
                         totalPrice += singleProduct.price;
                     })
@@ -1606,7 +1608,8 @@ var check_prod_in_order = (order, products, callback) => {
                     "name" : order_prod_full_obj[current_pro.product_id].name,
                     "quantity" : current_pro.quantity,
                     "price" : order_prod_full_obj[current_pro.product_id].price,
-                    "total" : Number(current_pro.quantity) * Number(order_prod_full_obj[current_pro.product_id].price)
+                    "total" : Number(current_pro.quantity) * Number(order_prod_full_obj[current_pro.product_id].price),
+                    "is_custom": false
                 })
             }
         })
