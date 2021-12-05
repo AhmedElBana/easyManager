@@ -373,40 +373,62 @@ var check_features = (body, callback) => {
 var calcStorage = (res,body, callback) => {
     if((body.images.length > 0)){
         let storeQuery = {parent: body.parent}
-        storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';
-        Store.findOneAndUpdate(
-            storeQuery,
-            {$inc : {'imagesStorage' : body.images_size}}, 
-            { new: true, useFindAndModify:false }, 
-            (e, response) => {
-            if(e){
-                console.log(e)
-                if(e.name && e.name == "CastError"){
-                    let err = {
-                        "status": 0,
-                        "message": e.message
-                    }
-                    return callback(err);
-                }else{
-                    let err = {
-                        "status": 0,
-                        "message": "error while updating store data."
-                    }
-                    return callback(err);
-                }
+        Store.findOne({parent: body.parent})
+        .then((store) => {
+            if(!store){
+                res.status(400).send({
+                    "status": 0,
+                    "message": "can't find any store with this parent."
+                });
             }else{
-                if(response == null){
+                if(Number(store.imagesStorage) + Number(body.images_size) <= Number(store.imagesStorageLimit)){
+                    Store.findOneAndUpdate(
+                        storeQuery,
+                        {$inc : {'imagesStorage' : body.images_size}}, 
+                        { new: true, useFindAndModify:false }, 
+                        (e, response) => {
+                        if(e){
+                            if(e.name && e.name == "CastError"){
+                                let err = {
+                                    "status": 0,
+                                    "message": e.message
+                                }
+                                return callback(err);
+                            }else{
+                                let err = {
+                                    "status": 0,
+                                    "message": "error while updating store data."
+                                }
+                                return callback(err);
+                            }
+                        }else{
+                            if(response == null){
+                                deleteImages(body.images);
+                                let err = {
+                                    "status": 0,
+                                    "message": "you don't have enough space to uploud product images."
+                                }
+                                return callback(err);
+                            }else{
+                                return callback(null);
+                            }
+                        }
+                    })
+                }else{
                     deleteImages(body.images);
                     let err = {
                         "status": 0,
                         "message": "you don't have enough space to uploud product images."
                     }
                     return callback(err);
-                }else{
-                    return callback(null);
                 }
             }
-        })
+        },(e) => {
+            res.status(400).send({
+                "status": 0,
+                "message": "can't find any store with this parent."
+            });
+        });
     }else{
         return callback(null);
     }
