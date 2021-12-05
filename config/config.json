@@ -15,7 +15,7 @@
     },
     "development": {
         "PORT": 3001,
-        "MONGODB_URL": "mongodb+srv://tradket-droplet:9Gw3pQsI72k186W4@tradket-89b7a9a0.mongo.ondigitalocean.com/easyManager?authSource=admin&replicaSet=tradket&tls=true&tlsCAFile=~/access/ca-certificate.cer",
+        "MONGODB_URL": "mongodb+srv://tradket-droplet:9Gw3pQsI72k186W4@tradket-89b7a9a0.mongo.ondigitalocean.com/easyManager?authSource=admin&replicaSet=tradket&tls=true&tlsCAFile=/access/ca-certificate.cer",
         "JWT_SECRET": "hjn8g4j8asd98+a5d895*/7d/*asd5/*asd5as4d-0<da1n",
         "GoogleAppPass": "kppswilekfzoaaju",
 
