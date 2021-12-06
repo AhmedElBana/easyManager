@@ -1207,9 +1207,9 @@ router.post('/return', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('126')){
         res.status(400).send({"message": "This user does not have perrmission to return order."});
     }else{
-        let body = _.pick(req.body, ['order_id','branch_id','removed_products','method']);
-        if(!body.order_id || !body.branch_id || !body.removed_products || !body.method){
-            res.status(400).send({"message": "Missing data, (order_id, branch_id, removed_products, method) field is required."});
+        let body = _.pick(req.body, ['order_id','branch_id','removed_products']);
+        if(!body.order_id || !body.branch_id || !body.removed_products){
+            res.status(400).send({"message": "Missing data, (order_id, branch_id, removed_products) field is required."});
         }else{
             let user = req.user;
             if(user.type == 'admin'){body.parent = user._id;}
@@ -1266,7 +1266,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                             let orderObj = {
                                                                 "type": "return",
                                                                 "status": "success",
-                                                                "method": body.method,
+                                                                "method": order.method,
                                                                 "customer": order.customer,
                                                                 "products": remains_products,
                                                                 "custom_products": remains_custom,
@@ -1290,7 +1290,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                             let newOrderData = new Order(orderObj);
                                                             newOrderData.save().then((newOrder) => {  
                                                                 //if payout != 0 make payout for the current order/cutomer/staff
-                                                                customer_Pay_out(newOrder._id, pay_out, req.user._id, newOrder.customer, body.branch_id, body.method, newOrder.parent, function(err){
+                                                                customer_Pay_out(newOrder._id, pay_out, req.user._id, newOrder.customer, body.branch_id, newOrder.parent, function(err){
                                                                     if(err !== null){
                                                                         res.status(400).send(err);
                                                                     }else{
@@ -1350,12 +1350,12 @@ router.post('/return', authenticate, function(req, res, next) {
         }
     }
 });
-var customer_Pay_out = (order_id, add_amount, staff, customer, branch_id, method, parent, callback) => {
+var customer_Pay_out = (order_id, add_amount, staff, customer, branch_id, parent, callback) => {
     if(add_amount > 0){
         let paymentObj = {
             "type": "out",
             "sub_type": "return",
-            "method": method,
+            "method": "cash",
             "status": "success",
             "name": "Order Return",
             "branch": branch_id,
