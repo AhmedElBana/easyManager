@@ -1306,12 +1306,12 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                                         if (error){
                                                                                             return res.status(201).send({
                                                                                                 "sms": "fail",
-                                                                                                "data": newOrder
+                                                                                                "data": {...newOrder._doc, "pay_out": pay_out}
                                                                                             });
                                                                                         }else{
                                                                                             return res.status(201).send({
                                                                                                 "sms": "success",
-                                                                                                "data": newOrder
+                                                                                                "data": {...newOrder._doc, "pay_out": pay_out}
                                                                                             });
                                                                                         }
                                                                                     }
