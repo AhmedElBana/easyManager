@@ -866,7 +866,7 @@ router.get('/fullProduct', authenticate, function(req, res, next){
             }else if(req.user.type == 'staff'){
                 parent = req.user.parent;
             }
-            ProductGroup.findOne({parent: parent, _id: req.query._id})
+            ProductGroup.findOne({parent: parent, _id: req.query._id.toString()})
             .then((productGroup) => {
                 if(!productGroup){
                     res.status(400).send({
