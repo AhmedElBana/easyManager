@@ -4,6 +4,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let StoreSchema = new mongoose.Schema({
 	name: {
