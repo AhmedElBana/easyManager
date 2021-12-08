@@ -67,11 +67,7 @@ let StoreSchema = new mongoose.Schema({
 		type: Boolean, 
 		required: true
 	},
-	parent: {
-		type: String,
-		trim: true,
-		unique: true
-	}
+	parent: {type: ObjectId, ref: 'User'}
 });
 
 StoreSchema.methods.toJSON = function(){
