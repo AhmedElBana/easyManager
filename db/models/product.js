@@ -15,12 +15,7 @@ let ProductSchema = new mongoose.Schema({
 		type: Boolean,
 		required: true
 	},
-	group_id: {
-		type: String,
-		required: true,
-		minlenght: 2,
-		trim: true
-	},
+	group_id: {type: ObjectId, ref: 'ProductGroup'},
 	name: {
 		type: String,
 		required: true,
