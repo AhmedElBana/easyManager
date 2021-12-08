@@ -29,7 +29,7 @@ let OrderSchema = new mongoose.Schema({
 	prevOrderDiscountValue: { type: Number , min: 0},
 	prevOrderTotal: { type: Number , min: 0},
 	returnNote: { type: String, trim: true },
-	parent: { type: String, trim: true, required: true },
+	parent: {type: ObjectId, ref: 'User'},
 });
 
 OrderSchema.methods.toJSON = function(){

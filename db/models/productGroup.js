@@ -4,6 +4,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let ProductGroupSchema = new mongoose.Schema({
 	_id: {
@@ -52,11 +53,7 @@ let ProductGroupSchema = new mongoose.Schema({
 		required: true,
 		trim: true
 	},
-	parent: {
-		required: true,
-		type: String,
-		trim: true
-	},
+	parent: {type: ObjectId, ref: 'User'},
 	active: {
 		type: Boolean,
 		required: true

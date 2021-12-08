@@ -4,6 +4,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let PromoSchema = new mongoose.Schema({
 	name: { type: String, required: true, minlenght: 2, trim: true },
@@ -25,7 +26,7 @@ let PromoSchema = new mongoose.Schema({
 	sms: { type: Boolean, required: true },
 	active: { type: Boolean, required: true },
 	creator_id: { type: String, trim: true, required: true },
-	parent: { type: String, trim: true, required: true }
+	parent: {type: ObjectId, ref: 'User'}
 });
 
 PromoSchema.methods.toJSON = function(){

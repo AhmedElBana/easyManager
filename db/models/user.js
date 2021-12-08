@@ -4,6 +4,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let UserSchema = new mongoose.Schema({
 	name: {
@@ -51,10 +52,7 @@ let UserSchema = new mongoose.Schema({
 		type: Boolean,
 		required: true
 	},
-	parent: {
-		type: String,
-		trim: true
-	},
+	parent: {type: ObjectId, ref: 'User'},
 	branches: {
 		type: Array
 	},

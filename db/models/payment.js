@@ -18,7 +18,7 @@ let PaymentSchema = new mongoose.Schema({
 	created_from: {type: ObjectId, ref: 'User'},
 	customer: {type: ObjectId, ref: 'Customer'},
 	order: {type: ObjectId, ref: 'Order'},
-	parent: { required: true, type: String, trim: true }
+	parent: {type: ObjectId, ref: 'User'}
 });
 
 PaymentSchema.methods.toJSON = function(){

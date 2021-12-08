@@ -4,6 +4,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let FeatureSchema = new mongoose.Schema({
 	name: {
@@ -20,11 +21,7 @@ let FeatureSchema = new mongoose.Schema({
 		type: Boolean,
 		default: false
 	},
-	parent: {
-		required: true,
-		type: String,
-		trim: true
-	},
+	parent: {type: ObjectId, ref: 'User'},
 	active: {
 		type: Boolean,
 		required: true

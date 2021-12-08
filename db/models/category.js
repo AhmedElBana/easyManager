@@ -4,6 +4,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let CategorySchema = new mongoose.Schema({
 	name: {
@@ -12,10 +13,7 @@ let CategorySchema = new mongoose.Schema({
 		minlenght: 2,
 		trim: true
 	},
-	parent: {
-		type: String,
-		trim: true
-	}
+	parent: {type: ObjectId, ref: 'User'}
 });
 
 CategorySchema.methods.toJSON = function(){

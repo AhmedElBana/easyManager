@@ -4,13 +4,14 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
+var ObjectId = require('mongodb').ObjectID;
 
 let CustomerSchema = new mongoose.Schema({
 	name: { type: String, required: true, minlenght: 2, trim: true },
 	debt: { type: Number, default: 0 },
 	password: { type: String, minlength: 6, trim: true },
 	phoneNumber: { type: String, trim: true, unique: false, required: true },
-	parent: { type: String, trim: true },
+	parent: {type: ObjectId, ref: 'User'},
 	code: { type: String, trim: true },
 	register_completed: { type: Boolean, required: true },
 	is_login: { type: Boolean, required: true },

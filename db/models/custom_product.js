@@ -30,7 +30,7 @@ let Custom_productSchema = new mongoose.Schema({
 	features: { type:  mongoose.Schema.Types.Mixed, of: String },
 	images: { type: Array },
 	description: { type: String, required: true, trim: true },
-	parent: { required: true, type: String, trim: true },
+	parent: {type: ObjectId, ref: 'User'},
 	active: { type: Boolean, required: true }
 });
 

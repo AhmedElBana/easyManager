@@ -34,10 +34,7 @@ let TransferSchema = new mongoose.Schema({
 		type: Array,
 		required: true
 	},
-	parent: {
-		type: String,
-		trim: true
-	}
+	parent: {type: ObjectId, ref: 'User'}
 });
 
 TransferSchema.methods.toJSON = function(){
