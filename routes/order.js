@@ -10,7 +10,8 @@ let {Promo} = require('../db/models/promo');
 let {Store} = require('../db/models/store');
 let {Payment} = require('../db/models/payment');
 let {authenticate} = require('../middleware/authenticate');
-let {single_sms} = require('./../services/sms');
+//let {single_sms} = require('./../services/sms');
+let {single_sms} = require('./../services/sms-sns');
 const { stubFalse } = require('lodash');
 
 /* Create new feature. */

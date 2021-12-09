@@ -1,10 +1,11 @@
 let {Store} = require('../db/models/store');
 var sns = require('aws-node-sns');
-sns.createClient({       
-    accessKeyId: "AKIA5ZLEC4WBKED2X4XS",
-    secretAccessKey: "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",
-    region: "eu-west-1"  
-});
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = require('twilio')(
+    accountSid, 
+    authToken
+);
 module.exports = {
     single_sms: function(parent, message, phone_number, callback){
         Store.findOne({'parent': parent})
@@ -18,13 +19,21 @@ module.exports = {
                     if(e){
                         return callback(true);
                     }else{
-                        sns.sendSMS(
-                            message, 
-                            "+2" + phone_number, 
-                            "Tradket" , 
-                            "Promotional", 
-                            callback
-                        );
+                        try {
+                            client.messages
+                            .create({
+                                body: message,
+                                from: "+19899997691",
+                                to: "+2" + phone_number
+                            })
+                            .then(message => callback(null, message))
+                            .catch((e) => {
+                                return callback(true);
+                            });
+                        }
+                        catch(err) {
+                            return callback(true);
+                        }
                     }
                 })
             }
