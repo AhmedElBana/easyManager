@@ -676,7 +676,7 @@ async function addProducts(productsArr, parent_id, branch_id, callback) {
                 let newIdWithFullMap = {...idWithFullMap}
                 Object.keys(productsMap).map((product_id) => {
                     if(newIdWithFullMap[product_id][branch_id]){
-                        newIdWithFullMap[product_id][branch_id] += Number(productsMap[product_id]);
+                        newIdWithFullMap[product_id][branch_id] = Number(newIdWithFullMap[product_id][branch_id]) + Number(productsMap[product_id]);
                     }else{
                         newIdWithFullMap[product_id][branch_id] = Number(productsMap[product_id]);
                     }
