@@ -676,9 +676,9 @@ async function addProducts(productsArr, parent_id, branch_id, callback) {
                 let newIdWithFullMap = {...idWithFullMap}
                 Object.keys(productsMap).map((product_id) => {
                     if(newIdWithFullMap[product_id][branch_id]){
-                        newIdWithFullMap[product_id][branch_id] += productsMap[product_id];
+                        newIdWithFullMap[product_id][branch_id] += Number(productsMap[product_id]);
                     }else{
-                        newIdWithFullMap[product_id][branch_id] = productsMap[product_id];
+                        newIdWithFullMap[product_id][branch_id] = Number(productsMap[product_id]);
                     }
                 })
                 Object.keys(newIdWithFullMap).map((product_id)=>{
@@ -710,7 +710,7 @@ function updateOneProduct(product_id, updatedMap) {
     return new Promise(resolve => {
         totalQuantity = 0;
         Object.keys(updatedMap).map((branch_id)=>{
-            totalQuantity += updatedMap[branch_id]
+            totalQuantity += Number(updatedMap[branch_id])
         })
         let updateBody = {"map": updatedMap, "quantity": totalQuantity};
         let query = {_id: product_id};

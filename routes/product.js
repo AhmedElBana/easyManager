@@ -55,12 +55,12 @@ router.post('/add', authenticate, function(req, res, next) {
                             }else{
                                 let oldMap = product.map;
                                 if(Object.keys(oldMap).includes(body.branch_id)){
-                                    oldMap[body.branch_id] += parseInt(body.quantity);
+                                    oldMap[body.branch_id] += Number(body.quantity);
                                 }else{
-                                    oldMap[body.branch_id] = parseInt(body.quantity);
+                                    oldMap[body.branch_id] = Number(body.quantity);
                                 }
                                 let newMap = oldMap;
-                                let newQuantity = product.quantity + parseInt(body.quantity);
+                                let newQuantity = Number(product.quantity) + Number(body.quantity);
                                 let query = {_id: body._id, parent: body.parent};
                                 let newData = {map: newMap, quantity: newQuantity}
                                 Product.findOneAndUpdate(query,newData, { new: true })
