@@ -55,7 +55,7 @@ router.post('/add', authenticate, function(req, res, next) {
                             }else{
                                 let oldMap = product.map;
                                 if(Object.keys(oldMap).includes(body.branch_id)){
-                                    oldMap[body.branch_id] += Number(body.quantity);
+                                    oldMap[body.branch_id] = Number(oldMap[body.branch_id]) + Number(body.quantity);
                                 }else{
                                     oldMap[body.branch_id] = Number(body.quantity);
                                 }
