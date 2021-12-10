@@ -9,6 +9,7 @@ let {Branch} = require('../db/models/branch');
 let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
+let {upload_products} = require('./../services/images_upload');
 
 var mongo = require('mongodb'),
     ObjectID = mongo.ObjectID;
@@ -45,107 +46,170 @@ var upload = multer({
     fileFilter: fileFilter
 });
 
+
+var imageUpload = (req, res, parent, callback) => {
+    let storeQuery = {parent: parent}
+    Store.findOne({parent: parent})
+    .then((store) => {
+        if(!store){
+            callback({
+                "status": 0,
+                "message": "can't find any store with this parent."
+            })
+        }else{
+            if(Number(store.imagesStorage) < Number(store.imagesStorageLimit)){
+                upload_products(req, res, parent,
+                    function(error, all_images_size, images_path_arr){
+                        if (error){
+                            callback({
+                                "status": 0,
+                                "message": "error happen while uploading images."
+                            })
+                        }else{
+                            Store.findOneAndUpdate(
+                            storeQuery,
+                            {$inc : {'imagesStorage' : all_images_size}}, 
+                            { new: true, useFindAndModify:false }, 
+                            (e, response) => {
+                                if(e){
+                                    if(e.name && e.name == "CastError"){
+                                        let err = {
+                                            "status": 0,
+                                            "message": e.message
+                                        }
+                                        return callback(err);
+                                    }else{
+                                        let err = {
+                                            "status": 0,
+                                            "message": "error while updating store data."
+                                        }
+                                        return callback(err);
+                                    }
+                                }else{
+                                    if(response == null){
+                                        let err = {
+                                            "status": 0,
+                                            "message": "error while updating store data."
+                                        }
+                                        return callback(err);
+                                    }else{
+                                        return callback(null, images_path_arr);
+                                    }
+                                }
+                            })
+                        }
+                    }
+                )
+            }else{
+                callback({
+                    "status": 0,
+                    "message": "you don't have enough space to uploud product images."
+                })
+            }
+        }
+    },(e) => {
+        callback({
+            "status": 0,
+            "message": "can't find any store with this parent."
+        })
+    });
+}
+
 /* Create new productGroup. */
-router.post('/create', authenticate, upload.array('image', 50), function(req, res, next) {
+router.post('/create', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('116')){
         res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to create new product."
         });
     }else{
-        let body = _.pick(req.body, ['_id','is_material','name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
-        
-        let images = [];
-        body.images_size = 0;
-        if(req.files){
-            let imagesSize = 0;
-            if(req.files.length > 0){
-                req.files.map((photo)=>{
-                    imagesSize += photo.size;
-                    images.push("https://" + req.headers.host + "/" + photo.path)
-                })
-                body.images_size = imagesSize * (1/(1024*1024));//MB
-            }
+        let parent;
+        if(req.user.type == 'admin'){
+            parent = req.user._id;
+        }else if(req.user.type == 'staff'){
+            parent = req.user.parent;
         }
-        body.images = images;
-        if(!body.is_material || !body.name || !body.branch_id || !body.category_id || !body.price || !body.quantity || !body.description){
-            res.status(400).send({
-                "status": 0,
-                "message": "Missing data, (is_material, name, branch_id, category_id, price, quantity, description) fields are required."
-            });
-        }else{
-            if(req.user.type == 'admin'){
-                body.parent = req.user._id;
-            }else if(req.user.type == 'staff'){
-                body.parent = req.user.parent;
-            }
-            body.active = true;
-            if(body.features){body.features = JSON.parse(body.features);}
-            if(body.productMap){body.productMap = JSON.parse(body.productMap);}
-            
-            Branch.findOne({parent: body.parent, _id: body.branch_id})
-            .then((branch) => {
-                if(!branch){
+        imageUpload(req, res, parent, function(err, images_path_arr){
+            if(err !== null){
+                res.status(400).send(err);
+            }else{
+                let body = _.pick(req.body, ['_id','is_material','name','branch_id','category_id','subCategory_id','price','quantity','description','features','image','productMap']);
+                if(!body.is_material || !body.name || !body.branch_id || !body.category_id || !body.price || !body.quantity || !body.description){
                     res.status(400).send({
                         "status": 0,
-                        "message": "you don't have any branch with this branch_id."
+                        "message": "Missing data, (is_material, name, branch_id, category_id, price, quantity, description) fields are required."
                     });
                 }else{
-                    Category.findOne({parent: body.parent, _id: body.category_id})
-                    .then((category) => {
-                        if(!category){
+                    body.images = images_path_arr;
+                    body.parent = parent
+                    body.active = true;
+                    if(body.features){body.features = JSON.parse(body.features);}
+                    if(body.productMap){body.productMap = JSON.parse(body.productMap);}
+                    Branch.findOne({parent: body.parent, _id: body.branch_id})
+                    .then((branch) => {
+                        if(!branch){
                             res.status(400).send({
                                 "status": 0,
-                                "message": "you don't have any category with this category_id."
+                                "message": "you don't have any branch with this branch_id."
                             });
                         }else{
-                            if(body.subCategory_id){
-                                SubCategory.findOne({parent: body.parent, _id: body.subCategory_id, category_id: body.category_id})
-                                .then((subCategory) => {
-                                    if(!subCategory){
-                                        res.status(400).send({
-                                            "status": 0,
-                                            "message": "wrong subCategory_id."
+                            Category.findOne({parent: body.parent, _id: body.category_id})
+                            .then((category) => {
+                                if(!category){
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": "you don't have any category with this category_id."
+                                    });
+                                }else{
+                                    if(body.subCategory_id){
+                                        SubCategory.findOne({parent: body.parent, _id: body.subCategory_id, category_id: body.category_id})
+                                        .then((subCategory) => {
+                                            if(!subCategory){
+                                                res.status(400).send({
+                                                    "status": 0,
+                                                    "message": "wrong subCategory_id."
+                                                });
+                                            }else{
+                                                check_features_productMap(body,function(err){
+                                                    if(err !== null){
+                                                        res.status(400).send(err);
+                                                    }else{
+                                                        createProductGroup(res,body);
+                                                    }
+                                                })
+                                            }
+                                        },(e) => {
+                                            res.status(400).send({
+                                                "status": 0,
+                                                "message": "wrong subCategory_id."
+                                            });
                                         });
                                     }else{
                                         check_features_productMap(body,function(err){
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
-                                                calcStorage(res,body);
+                                                createProductGroup(res,body);
                                             }
                                         })
                                     }
-                                },(e) => {
-                                    res.status(400).send({
-                                        "status": 0,
-                                        "message": "wrong subCategory_id."
-                                    });
+                                }
+                            },(e) => {
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "you don't have any category with this category_id."
                                 });
-                            }else{
-                                check_features_productMap(body,function(err){
-                                    if(err !== null){
-                                        res.status(400).send(err);
-                                    }else{
-                                        calcStorage(res,body);
-                                    }
-                                })
-                            }
+                            });
                         }
                     },(e) => {
                         res.status(400).send({
                             "status": 0,
-                            "message": "you don't have any category with this category_id."
+                            "message": "you don't have any branch with this branch_id."
                         });
                     });
                 }
-            },(e) => {
-                res.status(400).send({
-                    "status": 0,
-                    "message": "you don't have any branch with this branch_id."
-                });
-            });
-        }
+            }
+        })
     }
 });
 var check_features_productMap = (body, callback) => {
@@ -198,40 +262,6 @@ var check_features_productMap = (body, callback) => {
         }
     }
     if(!fountError){return callback(null);}
-}
-var calcStorage = (res,body) => {
-    let storeQuery = {parent: body.parent}
-    storeQuery.$where = 'function() { return (this.imagesStorage + ' + body.images_size + ') <= this.imagesStorageLimit;}';
-    Store.findOneAndUpdate(
-        storeQuery,
-        {$inc : {'imagesStorage' : body.images_size}}, 
-        { new: true, useFindAndModify:false }, 
-        (e, response) => {
-        if(e){
-            console.log(e)
-            if(e.name && e.name == "CastError"){
-                res.status(400).send({
-                    "status": 0,
-                    "message": e.message
-                });
-            }else{
-                res.status(400).send({
-                    "status": 0,
-                    "message": "error while updating store data."
-                });
-            }
-        }else{
-            if(response == null){
-                deleteImages(body.images);
-                res.status(400).send({
-                    "status": 0,
-                    "message": "you don't have enough space to uploud product images."
-                });
-            }else{
-                createProductGroup(res,body);
-            }
-        }
-    })
 }
 var deleteImages = (imagesArr) => {
     let startIndex = imagesArr[0].indexOf('/uploads/');

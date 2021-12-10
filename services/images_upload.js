@@ -23,6 +23,16 @@ const upload = multer({
     })
 }).array('image', 15);
 
+const upload_product_group = multer({
+    storage: multerS3({
+      s3: s3,
+      bucket: 'tradket',
+      acl: 'public-read',
+      key: function (request, file, cb) {
+        cb(null, env + "/" + folder_name + "/products/" + new ObjectID() + "_" + file.originalname);
+      }
+    })
+}).array('image', 15);
 const upload_custom = multer({
     storage: multerS3({
       s3: s3,
@@ -34,7 +44,27 @@ const upload_custom = multer({
     })
 }).array('image', 15);
 module.exports = {
-    
+    upload_products: function(request, response, parent, callback){
+        folder_name = parent;;
+        upload_product_group(request, response, function (error) {
+            if (error) {
+            return callback(true);
+            }
+            let all_images_size = 0;
+            let images_path_arr = [];
+            if(request.files){
+                let imagesSize = 0;
+                if(request.files.length > 0){
+                    request.files.map((photo)=>{
+                        imagesSize += photo.size;
+                        images_path_arr.push(photo.location)
+                    })
+                    all_images_size = imagesSize * (1/(1024*1024));//MB
+                }
+            }
+            callback(null, all_images_size, images_path_arr)
+        })
+    },
     upload_custom_products: function(request, response, parent, callback){
         folder_name = parent;;
         upload_custom(request, response, function (error) {
