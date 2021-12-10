@@ -307,7 +307,7 @@ async function addProducts(productsArr, parent_id, branch_id, callback) {
             let newIdWithFullMap = {...idWithFullMap}
             Object.keys(productsMap).map((product_id) => {
                 if(newIdWithFullMap[product_id][branch_id]){
-                    newIdWithFullMap[product_id][branch_id] +=  Number(productsMap[product_id]);
+                    newIdWithFullMap[product_id][branch_id] = Number(newIdWithFullMap[product_id][branch_id]) + Number(productsMap[product_id]);
                 }else{
                     newIdWithFullMap[product_id][branch_id] = Number(productsMap[product_id]);
                 }
@@ -372,7 +372,7 @@ var checkProductsAvailability = (body, callback) => {
                 let final_products = [];
                 products.map((singleProduct) => {
                     var newMapObj = {...singleProduct.map};
-                    newMapObj[body.source_id] -= Number(productsQuantityMap[singleProduct._id.toString()])
+                    newMapObj[body.source_id] = Number(newMapObj[body.source_id]) - Number(productsQuantityMap[singleProduct._id.toString()])
                     finalProductsQuantityMap[singleProduct._id] = newMapObj
                     final_products.push({
                         "product_id": singleProduct._id,
