@@ -9,6 +9,7 @@ let {Branch} = require('../db/models/branch');
 let {Category} = require('../db/models/category');
 let {SubCategory} = require('../db/models/subCategory');
 let {authenticate} = require('../middleware/authenticate');
+let {upload_custom_products} = require('./../services/images_upload');
 
 var mongo = require('mongodb'),
 ObjectID = mongo.ObjectID;
@@ -37,62 +38,51 @@ var upload = multer({
     },
     fileFilter: fileFilter
 });
+
 /* create Custom_product. */
-router.post('/create', authenticate, upload.array('image', 50), function(req, res, next) {
+router.post('/create', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('133')){
         res.status(400).send({
             "status": 0,
             "message": "This user does not have perrmission to create new custom product."
         });
     }else{
-        let body = _.pick(req.body, ['name','branch','price','quantity','materials_branch','materials','deadline','features','image','description']);
-        
-        let images = [];
-        body.images_size = 0;
-        if(req.files){
-            let imagesSize = 0;
-            if(req.files.length > 0){
-                req.files.map((photo)=>{
-                    imagesSize += photo.size;
-                    images.push("https://" + req.headers.host + "/" + photo.path)
-                })
-                body.images_size = imagesSize * (1/(1024*1024));//MB
-            }
+        let parent;
+        if(req.user.type == 'admin'){
+            parent = req.user._id;
+        }else if(req.user.type == 'staff'){
+            parent = req.user.parent;
         }
-        body.images = images;
-        if(!body.name || !body.branch || !body.price || !body.quantity || !body.materials_branch || !body.materials || !body.deadline || !body.features || !body.description){
-            res.status(400).send({
-                "status": 0,
-                "message": "Missing data, (name, branch, price, quantity, materials_branch, materials, deadline, features, description) fields are required."
-            });
-        }else{
-            if(req.user.type == 'admin'){
-                body.parent = req.user._id;
-            }else if(req.user.type == 'staff'){
-                body.parent = req.user.parent;
-            }
-            body.active = true;
-            check_features(body,function(err){
-                if(err !== null){
-                    res.status(400).send(err);
+        imageUpload(req, res, parent, function(err, images_path_arr){
+            if(err !== null){
+                res.status(400).send(err);
+            }else{
+                let body = _.pick(req.body, ['name','branch','price','quantity','materials_branch','materials','deadline','features','image','description']);
+                if(!body.name || !body.branch || !body.price || !body.quantity || !body.materials_branch || !body.materials || !body.deadline || !body.features || !body.description){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Missing data, (name, branch, price, quantity, materials_branch, materials, deadline, features, description) fields are required."
+                    });
                 }else{
-                    check_deadline(body, function(err){
+                    body.parent = parent;
+                    body.active = true;
+                    check_features(body,function(err){
                         if(err !== null){
                             res.status(400).send(err);
                         }else{
-                            checkBranch(body,function(err){
+                            check_deadline(body, function(err){
                                 if(err !== null){
                                     res.status(400).send(err);
                                 }else{
-                                    checkMaterialsBranch(body,function(err){
+                                    checkBranch(body,function(err){
                                         if(err !== null){
                                             res.status(400).send(err);
                                         }else{
-                                            check_materials(body,function(err){
+                                            checkMaterialsBranch(body,function(err){
                                                 if(err !== null){
                                                     res.status(400).send(err);
                                                 }else{
-                                                    calcStorage(res,body,function(err){
+                                                    check_materials(body,function(err){
                                                         if(err !== null){
                                                             res.status(400).send(err);
                                                         }else{
@@ -114,7 +104,7 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
                                                                         "created_from": req.user._id,
                                                                         "deadline": body.deadline,
                                                                         "features": body.features,
-                                                                        "images": body.images,
+                                                                        "images": images_path_arr,
                                                                         "description": body.description,
                                                                         "parent": body.parent,
                                                                         "active": true
@@ -131,16 +121,16 @@ router.post('/create', authenticate, upload.array('image', 50), function(req, re
                                                         }
                                                     });
                                                 }
-                                            });
+                                            })
                                         }
-                                    })
+                                    });
                                 }
-                            });
+                            })
                         }
                     })
                 }
-            })
-        }
+            }
+        })
     }
 });
 async function removeProducts(body, callback) {
@@ -370,68 +360,72 @@ var check_features = (body, callback) => {
         return callback(err);
     }
 }
-var calcStorage = (res,body, callback) => {
-    if((body.images.length > 0)){
-        let storeQuery = {parent: body.parent}
-        Store.findOne({parent: body.parent})
-        .then((store) => {
-            if(!store){
-                res.status(400).send({
-                    "status": 0,
-                    "message": "can't find any store with this parent."
-                });
-            }else{
-                if(Number(store.imagesStorage) + Number(body.images_size) <= Number(store.imagesStorageLimit)){
-                    Store.findOneAndUpdate(
-                        storeQuery,
-                        {$inc : {'imagesStorage' : body.images_size}}, 
-                        { new: true, useFindAndModify:false }, 
-                        (e, response) => {
-                        if(e){
-                            if(e.name && e.name == "CastError"){
-                                let err = {
-                                    "status": 0,
-                                    "message": e.message
-                                }
-                                return callback(err);
-                            }else{
-                                let err = {
-                                    "status": 0,
-                                    "message": "error while updating store data."
-                                }
-                                return callback(err);
-                            }
-                        }else{
-                            if(response == null){
-                                deleteImages(body.images);
-                                let err = {
-                                    "status": 0,
-                                    "message": "you don't have enough space to uploud product images."
-                                }
-                                return callback(err);
-                            }else{
-                                return callback(null);
-                            }
-                        }
-                    })
-                }else{
-                    deleteImages(body.images);
-                    let err = {
-                        "status": 0,
-                        "message": "you don't have enough space to uploud product images."
-                    }
-                    return callback(err);
-                }
-            }
-        },(e) => {
-            res.status(400).send({
+var imageUpload = (req, res, parent, callback) => {
+    let storeQuery = {parent: parent}
+    Store.findOne({parent: parent})
+    .then((store) => {
+        if(!store){
+            callback({
                 "status": 0,
                 "message": "can't find any store with this parent."
-            });
-        });
-    }else{
-        return callback(null);
-    }
+            })
+        }else{
+            if(Number(store.imagesStorage) < Number(store.imagesStorageLimit)){
+                upload_custom_products(req, res, parent,
+                    function(error, all_images_size, images_path_arr){
+                        if (error){
+                            callback({
+                                "status": 0,
+                                "message": "error happen while uploading images."
+                            })
+                        }else{
+                            Store.findOneAndUpdate(
+                            storeQuery,
+                            {$inc : {'imagesStorage' : all_images_size}}, 
+                            { new: true, useFindAndModify:false }, 
+                            (e, response) => {
+                                if(e){
+                                    if(e.name && e.name == "CastError"){
+                                        let err = {
+                                            "status": 0,
+                                            "message": e.message
+                                        }
+                                        return callback(err);
+                                    }else{
+                                        let err = {
+                                            "status": 0,
+                                            "message": "error while updating store data."
+                                        }
+                                        return callback(err);
+                                    }
+                                }else{
+                                    if(response == null){
+                                        let err = {
+                                            "status": 0,
+                                            "message": "error while updating store data."
+                                        }
+                                        return callback(err);
+                                    }else{
+                                        return callback(null, images_path_arr);
+                                    }
+                                }
+                            })
+                        }
+                    }
+                )
+            }else{
+                callback({
+                    "status": 0,
+                    "message": "you don't have enough space to uploud product images."
+                })
+            }
+        }
+    },(e) => {
+        callback({
+            "status": 0,
+            "message": "can't find any store with this parent."
+        })
+    });
 }
 var deleteImages = (imagesArr) => {
     let startIndex = imagesArr[0].indexOf('/uploads/');
