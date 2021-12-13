@@ -846,7 +846,7 @@ router.post('/deliver', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            let updateBody = {"status": "delivered", "ready_at": new Date(), "ready_from": req.user._id};
+            let updateBody = {"status": "delivered", "delivered_at": new Date(), "delivered_from": req.user._id};
             let query = {parent: body.parent, _id: body.id, status: "ready"};
             Custom_product.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
                 if(e){
