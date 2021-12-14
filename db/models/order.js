@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 const mongoosePaginate = require('mongoose-paginate-v2');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
@@ -7,6 +8,7 @@ const bcrypt = require('bcryptjs');
 var ObjectId = require('mongodb').ObjectID;
 
 let OrderSchema = new mongoose.Schema({
+	_id: Number,
 	type: { type: String, trim: true, required: true, enum: ['order','return']},
 	status: { type: String, trim: true, required: true, enum: ['success','canceled','returned']},
 	method: { type: String, required: true, trim: true, enum: ['cash','card'] },
@@ -30,7 +32,7 @@ let OrderSchema = new mongoose.Schema({
 	prevOrderTotal: { type: Number , min: 0},
 	returnNote: { type: String, trim: true },
 	parent: {type: ObjectId, ref: 'User'},
-});
+}, { _id: false });
 
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
@@ -39,6 +41,8 @@ OrderSchema.methods.toJSON = function(){
 }
 
 OrderSchema.plugin(mongoosePaginate);
+OrderSchema.plugin(AutoIncrement);
+
 let Order = mongoose.model('Order', OrderSchema);
 
 module.exports = {Order}
