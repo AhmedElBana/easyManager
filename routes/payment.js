@@ -115,7 +115,7 @@ router.get('/list', authenticate, function(req, res, next) {
                 { path: 'customer', select: ['name', 'phoneNumber'] },
                 { path: 'branch', select: ['name', 'phoneNumber', 'address', 'type'] },
                 { path: 'created_from', select: ['name', 'email'] },
-                { path: 'order', select: ['type','status','method','bill','total','payed','debt','createdDate'] }
+                { path: 'order', select: ['id','type','status','method','bill','total','payed','debt','createdDate'] }
             ],
             collation: {
                 locale: 'en'
