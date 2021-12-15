@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 var ObjectId = require('mongodb').ObjectID;
 
 let OrderSchema = new mongoose.Schema({
-	_id: Number,
+	id: { type: Number },
 	type: { type: String, trim: true, required: true, enum: ['order','return']},
 	status: { type: String, trim: true, required: true, enum: ['success','canceled','returned']},
 	method: { type: String, required: true, trim: true, enum: ['cash','card'] },
@@ -32,16 +32,16 @@ let OrderSchema = new mongoose.Schema({
 	prevOrderTotal: { type: Number , min: 0},
 	returnNote: { type: String, trim: true },
 	parent: {type: ObjectId, ref: 'User'},
-}, { _id: false });
+});
 
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','type','status','method','customer','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','total','payed','debt','promo','promo_id','createdDate','branch_id','creator_id','parentOrder','returnNote','parent']);
+	return _.pick(OrderObject, ['_id','id','type','status','method','customer','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','total','payed','debt','promo','promo_id','createdDate','branch_id','creator_id','parentOrder','returnNote','parent']);
 }
 
 OrderSchema.plugin(mongoosePaginate);
-OrderSchema.plugin(AutoIncrement);
+OrderSchema.plugin(AutoIncrement, {id: 'order_parent_seq', inc_field: 'id', reference_fields: ['parent'] });
 
 let Order = mongoose.model('Order', OrderSchema);
 

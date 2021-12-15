@@ -921,7 +921,7 @@ router.post('/add_payment', authenticate, function(req, res, next) {
                 body.parent = req.user.parent;
             }
             let query = {
-                _id: body.order_id, 
+                id: body.order_id, 
                 parent: body.parent
             };
             Order.findOne(query)
@@ -1062,7 +1062,7 @@ router.post('/cancel', authenticate, function(req, res, next) {
                 body.parent = req.user.parent;
             }
             let query = {
-                _id: body.order_id, 
+                id: body.order_id, 
                 parent: body.parent
             };
             Order.findOne(query)
@@ -1215,7 +1215,7 @@ router.post('/return', authenticate, function(req, res, next) {
             let user = req.user;
             if(user.type == 'admin'){body.parent = user._id;}
             else if(user.type == 'staff'){body.parent = user.parent;}
-            let query = {_id: body.order_id, parent: body.parent};
+            let query = {id: body.order_id, parent: body.parent};
             Order.findOne(query)
             .then((order) => {
                 if(!order){
@@ -1254,7 +1254,7 @@ router.post('/return', authenticate, function(req, res, next) {
                                                     pay_out = order.payed - final_new_amount;
                                                 }
                                                 //set order as returned
-                                                let query = {_id: order._id, parent: body.parent};
+                                                let query = {id: order.id, parent: body.parent};
                                                 let newData = {status: "returned"}
                                                 Order.findOneAndUpdate(query,newData, { new: true })
                                                 .then(updatedProduct => {
@@ -1696,7 +1696,7 @@ router.post('/return-old', authenticate, function(req, res, next) {
                 body.parent = req.user.parent;
             }
             let query = {
-                _id: body.order_id, 
+                id: body.order_id, 
                 parent: body.parent
             };
             Order.findOne(query)
@@ -1799,7 +1799,7 @@ router.post('/return-old', authenticate, function(req, res, next) {
                                                                                                                 }
                                                                                                                 let newOrderData = new Order(orderObj);
                                                                                                                 newOrderData.save().then((newOrder) => {    
-                                                                                                                    let query = {_id: order._id, parent: body.parent};
+                                                                                                                    let query = {id: order.id, parent: body.parent};
                                                                                                                     let newData = {returned: true, returnedDate: new Date()}
                                                                                                                     Order.findOneAndUpdate(query,newData, { new: true })
                                                                                                                     .then(updatedProduct => {
@@ -2389,7 +2389,7 @@ router.get('/list', authenticate, function(req, res, next) {
         }else if(req.user.type == 'staff'){
             filters = {parent: req.user.parent};
         }
-        //if(req.query._id){filters._id={ $regex: new RegExp(req.query._id), $options: "i" }}
+        if(req.query.id){filters.id={ $regex: new RegExp(req.query.id), $options: "i" }}
         if(req.query.status){filters.status = req.query.status}
         if(req.query.creator_id){filters.creator_id = req.query.creator_id}
         if(req.query.branch_id){filters.branch_id = req.query.branch_id}
@@ -2550,7 +2550,7 @@ router.get('/summary', authenticate, function(req, res, next){
 });
 
 router.get('/search_id', authenticate, function(req, res, next){
-    if(!req.query._id){
+    if(!req.query.id){
         return res.send({
             "data": []
         });
@@ -2564,12 +2564,12 @@ router.get('/search_id', authenticate, function(req, res, next){
         let filters = [
             {
               $addFields: {
-                tempId: { $toString: '$_id' },
+                tempId: { $toString: '$id' },
               }
             },
             {
               $match: {
-                tempId: { $regex: req.query._id, $options: "i" },
+                tempId: { $regex: req.query.id, $options: "i" },
                 parent: parent
               }
             },
@@ -2579,7 +2579,7 @@ router.get('/search_id', authenticate, function(req, res, next){
         .then((order) => {
             if(!order){
                 res.status(400).send({
-                    "message": "can't find any order with this _id."
+                    "message": "can't find any order with this id."
                 });
             }else{
                 return res.send({

@@ -13,7 +13,7 @@ let Custom_productSchema = new mongoose.Schema({
 	price: { type: Number, min: 0, required: true },
 	quantity: { type: Number, min: 0, required: true },
 	customer: {type: ObjectId, ref: 'Customer'},
-	order: {type: Number, ref: 'Order'},
+	order: {type: ObjectId, ref: 'Order'},
 	materials_branch: {type: ObjectId, ref: 'Branch'},
 	materials: { type:  mongoose.Schema.Types.Mixed, of: String },
 	status: { type: String, required: true, trim: true, enum: ['created','assigned','accepted','ready','delivered','canceled'] },

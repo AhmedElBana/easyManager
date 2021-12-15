@@ -17,7 +17,7 @@ let PaymentSchema = new mongoose.Schema({
 	created_at: { type: Date, required: true, trim: true },
 	created_from: {type: ObjectId, ref: 'User'},
 	customer: {type: ObjectId, ref: 'Customer'},
-	order: {type: Number, ref: 'Order'},
+	order: {type: ObjectId, ref: 'Order'},
 	parent: {type: ObjectId, ref: 'User'}
 });
 
