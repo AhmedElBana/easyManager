@@ -560,6 +560,7 @@ var productsFormatCheck = (body, callback) => {
             }
             return callback(err);
         }else{
+            let products_obj = {};
             body.products.map((product)=>{
                 if(!product.product_id){
                     fountError = true;
@@ -585,7 +586,18 @@ var productsFormatCheck = (body, callback) => {
                     }
                     return callback(err);
                 }
+                if(products_obj[product.product_id]){
+                    products_obj[product.product_id]["quantity"] = Number(products_obj[product.product_id]["quantity"]) + Number(product.quantity);
+                }else{
+                    products_obj[product.product_id] = {...product};
+                }
             })
+            //arrange the final list
+            let final_arr = [];
+            Object.keys(products_obj).map((key)=>{
+                final_arr.push(products_obj[key])
+            })
+            body.products = [...final_arr];
         }
         if(!fountError){return callback(null);}
     }else{
