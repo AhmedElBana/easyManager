@@ -111,6 +111,23 @@ UserSchema.statics.findByCredentials = function(email, password){
 		});
 	});
 }
+UserSchema.statics.findByCredentials_phone = function(phoneNumber, password){
+	User = this;
+	return User.findOne({"phoneNumber": phoneNumber}).then((user) => {
+		if(!user){
+			return Promise.reject();
+		}
+		return new Promise((resolve, reject) => {
+			bcrypt.compare(password, user.password, (err, res) => {
+				if(res){
+					resolve(user);
+				}else{
+					reject();
+				}
+			});
+		});
+	});
+}
 UserSchema.pre('save', function(next){
 	let user = this;
 	if(user.isModified('password')){

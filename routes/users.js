@@ -58,7 +58,6 @@ router.post('/login', function(req, res, next) {
                       }
                   })
                   .catch(err => {
-                      console.log(err)
                       res.status(401).send({
                           "status": 0,
                           "message": "error while query user data."
@@ -68,6 +67,70 @@ router.post('/login', function(req, res, next) {
               res.status(401).send({
                   "status": 0,
                   "message": "email or password is not correct."
+              });
+          });
+      }
+});
+router.post('/login_phone', function(req, res, next) {
+    let body = _.pick(req.body, ['phoneNumber','password']);
+      if(!body.phoneNumber || !body.password){
+          res.status(400).send({
+              "status": 0,
+              "message": "Missing data, (phoneNumber, password) fields are required."
+          });
+      }else{
+          User.findByCredentials_phone(body.phoneNumber, body.password).then((user) => {
+              let query = {_id: user._id};
+              let newData = {"is_login": true}
+              User.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
+                  .then(response => {
+                      if(response){
+                        let token = user.generateAuthToken();
+                        if(user.type == 'admin'){
+                            body.parent = user._id;
+                        }else if(user.type == 'staff'){
+                            body.parent = user.parent;
+                        }
+                        Store.findOne({parent: body.parent})
+                        .then((store) => {
+                            if(!store){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "you don't have any store with this parent."
+                                });
+                            }else{
+                                return res.header('x-auth', token).send({
+                                    "status": 1,
+                                    "data": {
+                                        "userData": response, 
+                                        "store": store,
+                                        "token": token
+                                    }
+                                });
+                            }
+                        },(e) => {
+                            res.status(400).send({
+                                "status": 0,
+                                "message": "you don't have any store with this parent."
+                            });
+                        });
+                      }else{
+                          res.status(401).send({
+                              "status": 0,
+                              "message": "Invalid user data."
+                          });
+                      }
+                  })
+                  .catch(err => {
+                      res.status(401).send({
+                          "status": 0,
+                          "message": "error while query user data."
+                      });
+                  });
+          }).catch((e) => {
+              res.status(401).send({
+                  "status": 0,
+                  "message": "phoneNumber or password is not correct."
               });
           });
       }
