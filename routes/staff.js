@@ -4,6 +4,7 @@ const _ = require('lodash');
 let {User} = require('./../db/models/user');
 let {Branch} = require('./../db/models/branch');
 let {authenticate} = require('../middleware/authenticate');
+let {single_sms} = require('./../services/sms-sns');
 
 var handdleStaffPerms = (permissionsArr) =>{
     if(permissionsArr.includes('101') && !permissionsArr.includes('100')){permissionsArr.push('100')}
@@ -73,11 +74,26 @@ router.post('/create', authenticate, function(req, res, next) {
                     let newUserData = new User(body);
                     newUserData.save().then((newUser) => {
                         let token = newUser.generateAuthToken();
-                        
-                        return res.header('x-auth', token).status(201).send({
-                            "status": 1,
-                            "data": {"userData": newUser}
-                        });
+                        single_sms(
+                            newUser.parent,
+                            "Your password is: " + body.password + "\nYou can download Tradket app from Play Store: https://play.google.com/store/apps/details?id=com.neptune.tradket",
+                            newUser.phoneNumber,
+                            function(error, data){
+                                if (error){
+                                    return res.header('x-auth', token).status(201).send({
+                                        "status": 1,
+                                        "sms": "fail",
+                                        "data": {"userData": newUser}
+                                    });
+                                }else{
+                                    return res.header('x-auth', token).status(201).send({
+                                        "status": 1,
+                                        "sms": "success",
+                                        "data": {"userData": newUser}
+                                    });
+                                }
+                            }
+                        )
                     }).catch((e) => {
                         if(e.code){
                             if(e.code == 11000){
