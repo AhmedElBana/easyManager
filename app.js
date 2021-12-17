@@ -1,3 +1,9 @@
+const AdminBro = require('admin-bro')
+const AdminBroExpress = require('@admin-bro/express')
+const AdminBroMongoose = require('@admin-bro/mongoose')
+
+AdminBro.registerAdapter(AdminBroMongoose)
+
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser'); 
@@ -21,6 +27,7 @@ var promoRouter = require('./routes/promo')
 var customerRouter = require('./routes/customer')
 var storeRouter = require('./routes/store')
 var paymentRouter = require('./routes/payment')
+
 
 var app = express();
 
@@ -102,5 +109,26 @@ app.use('/api/promo', promoRouter);
 app.use('/api/customer', customerRouter)
 app.use('/api/store', storeRouter)
 app.use('/api/payment', paymentRouter)
+
+
+//setup admin
+let { User } = require('./db/models/user');
+let { Order } = require('./db/models/order');
+let { Customer } = require('./db/models/customer');
+let { Branch } = require('./db/models/branch');
+let { Payment } = require('./db/models/payment');
+
+const adminBro = new AdminBro({
+    databases: [],
+    rootPath: '/admin',
+    resources: [
+        { resource: User, options: { listProperties: ['_id', 'name', 'email', 'phoneNumber', 'type', 'active', 'parent'] } },
+        Order, Customer, Branch, Payment],
+    branding: {
+      companyName: 'Tradket',
+    },
+})
+const router = AdminBroExpress.buildRouter(adminBro)
+app.use(adminBro.options.rootPath, router)
 
 module.exports = app;
