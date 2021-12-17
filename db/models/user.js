@@ -111,9 +111,9 @@ UserSchema.statics.findByCredentials = function(email, password){
 		});
 	});
 }
-UserSchema.statics.findByCredentials_phone = function(phoneNumber, password){
+UserSchema.statics.findByCredentials_identifier = function(identifier, password){
 	User = this;
-	return User.findOne({"phoneNumber": phoneNumber}).then((user) => {
+	return User.findOne({$or:[{"phoneNumber": identifier}, {"email": identifier}]}).then((user) => {
 		if(!user){
 			return Promise.reject();
 		}

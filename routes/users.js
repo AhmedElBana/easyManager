@@ -71,15 +71,15 @@ router.post('/login', function(req, res, next) {
           });
       }
 });
-router.post('/login_phone', function(req, res, next) {
-    let body = _.pick(req.body, ['phoneNumber','password']);
-      if(!body.phoneNumber || !body.password){
+router.post('/login_v2', function(req, res, next) {
+    let body = _.pick(req.body, ['identifier','password']);
+      if(!body.identifier || !body.password){
           res.status(400).send({
               "status": 0,
-              "message": "Missing data, (phoneNumber, password) fields are required."
+              "message": "Missing data, (identifier, password) fields are required."
           });
       }else{
-          User.findByCredentials_phone(body.phoneNumber, body.password).then((user) => {
+          User.findByCredentials_identifier(body.identifier, body.password).then((user) => {
               let query = {_id: user._id};
               let newData = {"is_login": true}
               User.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
