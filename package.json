@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "NODE_ENV=development node ./bin/www",
-    "local": "node ./bin/www",
+    "local": "nodemon node ./bin/www",
     "test": "mocha  ./test/tradket.test.js",
     "test-watch": "nodemon --exec \"npm test\""
   },

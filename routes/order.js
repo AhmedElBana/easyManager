@@ -534,9 +534,9 @@ function checkUnregisteredProducts(body, callback){
         let bill = [];
         let totalPrice = 0;
         body.unregistered_products.map((singleProduct) => {
-            singleProduct._id = new ObjectID();
+            singleProduct.product_id = new ObjectID();
             bill.push({
-                "_id": singleProduct._id,
+                "_id": singleProduct.product_id,
                 "name": singleProduct.name,
                 "quantity": Number(singleProduct.quantity),
                 "price": Number(singleProduct.price),
@@ -1316,12 +1316,12 @@ router.post('/return', authenticate, function(req, res, next) {
                                     if(err !== null){
                                         res.status(400).send(err);
                                     }else{
-                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount, remains_custom_bill){
+                                        handle_removed_products(order, body.removed_products, body.branch_id, body.parent, function(err, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount, remains_custom_bill, remains_unregistered_products, remains_unregistered_products_amount, remains_unregistered_products_bill){
                                             if(err !== null){
                                                 res.status(400).send(err);
                                             }else{
                                                 //handle pre/new orders and customer debt
-                                                let final_new_amount = remains_products_amount + remains_custom_amount;
+                                                let final_new_amount = remains_products_amount + remains_custom_amount + remains_unregistered_products_amount;
                                                 let new_order_payed;
                                                 let new_order_debt;
                                                 let final_customer_debt = - Number(order.debt);
@@ -1352,8 +1352,9 @@ router.post('/return', authenticate, function(req, res, next) {
                                                                 "method": order.method,
                                                                 "customer": order.customer,
                                                                 "products": remains_products,
+                                                                "unregistered_products": remains_unregistered_products,
                                                                 "custom_products": remains_custom,
-                                                                "bill": [...remains_products_bill, ...remains_custom_bill],
+                                                                "bill": [...remains_products_bill, ...remains_unregistered_products_bill, ...remains_custom_bill],
                                                                 "prevOrderSubTotal": order.subTotal,
                                                                 "prevOrderDiscountValue": order.discountValue,
                                                                 "prevOrderTotal": order.total,
@@ -1487,31 +1488,42 @@ var handle_removed_products = (order, removed_products, current_branch, parent, 
             return callback(err);
         }else{
             let normal = [];
-            let custom = []
+            let custom = [];
+            let unregistered = [];
             removed_products.map((current_product)=>{
-                if(current_product.is_custom){
-                    custom.push(current_product)
+                if(!current_product.is_custom && current_product.unregistered){
+                    unregistered.push(current_product)
                 }else{
-                    normal.push(current_product)
+                    if(current_product.is_custom){
+                        custom.push(current_product)
+                    }else{
+                        normal.push(current_product)
+                    }
                 }
             })
             check_prod_in_order(order, normal, function(err, remains_products, remains_products_amount, remains_products_bill){
                 if(err !== null){
                     return callback(err);
                 }else{
-                    check_custom_in_order(order, custom, parent, function(err, remains_custom, remains_custom_amount, remains_custom_bill){
+                    check_unregistered_prod_in_order(order, unregistered, function(err, remains_unregistered_products, remains_unregistered_products_amount, remains_unregistered_products_bill){
                         if(err !== null){
                             return callback(err);
                         }else{
-                            back_prod_to_branch(normal, current_branch, parent, function(err){
+                            check_custom_in_order(order, custom, parent, function(err, remains_custom, remains_custom_amount, remains_custom_bill){
                                 if(err !== null){
                                     return callback(err);
                                 }else{
-                                    cancelCustomProducts(custom, parent, function(err){
+                                    back_prod_to_branch(normal, current_branch, parent, function(err){
                                         if(err !== null){
-                                            res.status(400).send(err);
+                                            return callback(err);
                                         }else{
-                                            return callback(null, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount, remains_custom_bill);
+                                            cancelCustomProducts(custom, parent, function(err){
+                                                if(err !== null){
+                                                    res.status(400).send(err);
+                                                }else{
+                                                    return callback(null, remains_products, remains_products_amount, remains_products_bill, remains_custom, remains_custom_amount, remains_custom_bill, remains_unregistered_products, remains_unregistered_products_amount, remains_unregistered_products_bill);
+                                                }
+                                            })
                                         }
                                     })
                                 }
@@ -1697,6 +1709,63 @@ var check_prod_in_order = (order, products, callback) => {
             }
         })
         return callback(null, remains_products, remains_products_amount, remains_products_bill);
+    }
+}
+var check_unregistered_prod_in_order = (order, products, callback) => {
+    //check all products in order
+    let remains_unregistered_products = [];
+    let remains_unregistered_products_bill = [];
+    let remains_unregistered_products_amount = 0;
+    let products_err = false;
+    let err_message = "";
+    let order_prod_obj = {};
+    order.unregistered_products.map((ele)=>{
+        order_prod_obj[ele.product_id] = ele.quantity;
+    })
+    let order_prod_price_obj = {};
+    let order_prod_full_obj = {};
+    order.bill.map((ele)=>{
+        order_prod_price_obj[ele._id] = Number(ele.price);
+        order_prod_full_obj[ele._id] = ele;
+    })
+    let removed_obj = {};
+    products.map((ele)=>{
+        if(!order_prod_obj[ele._id]){
+            products_err = true;
+            err_message = `product with _id (${ele._id}) is not found in the order.`;
+        }else if(order_prod_obj[ele._id] < ele.quantity){
+            products_err = true;
+            err_message = `can't find enough quantity from this product (${ele._id}) in the order, max quantity is ${order_prod_obj[ele._id]}.`;
+        }else{
+            removed_obj[[ele._id]] = ele.quantity
+        }
+    })
+    if(products_err){
+        let err = {"message": err_message}
+        return callback(err);
+    }else{
+        order.unregistered_products.map((pro)=>{
+            if(!removed_obj[pro.product_id]){
+                remains_unregistered_products.push(pro)
+                remains_unregistered_products_amount += Number(pro.quantity) * Number(order_prod_price_obj[pro.product_id]);
+                remains_unregistered_products_bill.push(order_prod_full_obj[pro.product_id])
+            }else if(removed_obj[pro.product_id] && (pro.quantity - removed_obj[pro.product_id] > 0)){
+                let current_pro = {...pro}
+                current_pro.quantity -= removed_obj[pro.product_id];
+                remains_unregistered_products.push(current_pro)
+                remains_unregistered_products_amount += Number(current_pro.quantity) * Number(order_prod_price_obj[current_pro.product_id]);
+                remains_unregistered_products_bill.push({
+                    "_id" : current_pro.product_id,
+                    "name" : order_prod_full_obj[current_pro.product_id].name,
+                    "quantity" : current_pro.quantity,
+                    "price" : order_prod_full_obj[current_pro.product_id].price,
+                    "total" : Number(current_pro.quantity) * Number(order_prod_full_obj[current_pro.product_id].price),
+                    "is_custom": false,
+                    "unregistered": true
+                })
+            }
+        })
+        return callback(null, remains_unregistered_products, remains_unregistered_products_amount, remains_unregistered_products_bill);
     }
 }
 var check_removed_products_format = (products, callback) => {
