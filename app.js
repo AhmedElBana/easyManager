@@ -1,3 +1,7 @@
+const AdminJS = require('adminjs');
+const AdminJSExpress = require('@adminjs/express');
+const AdminJSMongoose = require('@adminjs/mongoose')
+
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser'); 
@@ -102,5 +106,32 @@ app.use('/api/promo', promoRouter);
 app.use('/api/customer', customerRouter)
 app.use('/api/store', storeRouter)
 app.use('/api/payment', paymentRouter)
+
+//setup admin
+AdminJS.registerAdapter(AdminJSMongoose)
+
+let { Store } = require('./db/models/store');
+let { User } = require('./db/models/user');
+let { Order } = require('./db/models/order');
+let { Customer } = require('./db/models/customer');
+let { Branch } = require('./db/models/branch');
+let { Payment } = require('./db/models/payment');
+
+const adminJs = new AdminJS({
+    databases: [],
+    rootPath: '/admin',
+    resources: [
+        { resource: Store, options: { listProperties: ['_id', 'name','parent', 'availableSMS','usedSMS', 'imagesStorageLimit', 'imagesStorage', 'phoneNumber','returnOrederAllowed','returnOrederDays','returnAnyBranch'] } },
+        { resource: User, options: { listProperties: ['_id', 'name', 'email', 'phoneNumber', 'type', 'active', 'parent'] } },
+        Order, Customer, Branch, Payment],
+    branding: {
+      companyName: 'Tradket',
+    },
+})
+
+const router = AdminJSExpress.buildRouter(adminJs)
+
+
+app.use(adminJs.options.rootPath, router)
 
 module.exports = app;
