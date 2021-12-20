@@ -14,6 +14,7 @@ let OrderSchema = new mongoose.Schema({
 	method: { type: String, required: true, trim: true, enum: ['cash','card'] },
 	customer: {type: ObjectId, ref: 'Customer'},
 	products: { type: Array },
+	unregistered_products: { type: Array },
 	custom_products: { type: Array },
 	bill: { type: Array, required: true },
 	subTotal: { type: Number, min: 0, required: true },
@@ -37,7 +38,7 @@ let OrderSchema = new mongoose.Schema({
 OrderSchema.methods.toJSON = function(){
 	let Order = this;
 	let OrderObject = Order.toObject();
-	return _.pick(OrderObject, ['_id','id','type','status','method','customer','products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','total','payed','debt','promo','promo_id','createdDate','branch_id','creator_id','parentOrder','returnNote','parent']);
+	return _.pick(OrderObject, ['_id','id','type','status','method','customer','products','unregistered_products','custom_products','bill','prevOrderSubTotal','prevOrderDiscountValue','prevOrderTotal','subTotal','discountValue','total','payed','debt','promo','promo_id','createdDate','branch_id','creator_id','parentOrder','returnNote','parent']);
 }
 
 OrderSchema.plugin(mongoosePaginate);
