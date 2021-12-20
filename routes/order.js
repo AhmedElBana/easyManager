@@ -13,6 +13,7 @@ let {authenticate} = require('../middleware/authenticate');
 //let {single_sms} = require('./../services/sms');
 let {single_sms} = require('./../services/sms-sns');
 const { stubFalse } = require('lodash');
+var ObjectID = require('mongodb').ObjectID;
 
 /* Create new feature. */
 router.post('/create', authenticate, function(req, res, next) {
@@ -533,7 +534,9 @@ function checkUnregisteredProducts(body, callback){
         let bill = [];
         let totalPrice = 0;
         body.unregistered_products.map((singleProduct) => {
+            singleProduct._id = new ObjectID();
             bill.push({
+                "_id": singleProduct._id,
                 "name": singleProduct.name,
                 "quantity": Number(singleProduct.quantity),
                 "price": Number(singleProduct.price),
