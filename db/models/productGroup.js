@@ -23,7 +23,6 @@ let ProductGroupSchema = new mongoose.Schema({
 	},
 	category_id: {
 		type: String,
-		required: true,
 		trim: true
 	},
 	subCategory_id: {
@@ -32,7 +31,6 @@ let ProductGroupSchema = new mongoose.Schema({
 	},
 	description: {
 		type: String,
-		required: true,
 		trim: true
 	},
 	features: {
