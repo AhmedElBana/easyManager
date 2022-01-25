@@ -15,12 +15,13 @@ let CustomerSchema = new mongoose.Schema({
 	code: { type: String, trim: true },
 	register_completed: { type: Boolean, required: true },
 	is_login: { type: Boolean, required: true },
+	groups: {type: Array}
 });
 
 CustomerSchema.methods.toJSON = function(){
 	let Customer = this;
 	let CustomerObject = Customer.toObject();
-	return _.pick(CustomerObject, ['_id','name','debt','phoneNumber','parent','register_completed']);
+	return _.pick(CustomerObject, ['_id','name','debt','phoneNumber','parent','register_completed','groups']);
 }
 
 CustomerSchema.index({ _id: 1, parent: 1 }, { unique: true });

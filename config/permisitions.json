@@ -38,5 +38,10 @@
     "136":"can view store info",
     "137":"can pay out",
     "138":"can cancel pay out",
-    "139":"can view payments"
+    "139":"can view payments",
+    "140":"can view customers",
+    "142":"can create customers",
+    "143":"can edit customers",
+    "144":"can creat customers group",
+    "145":"can edit customers group"
 }
