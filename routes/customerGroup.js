@@ -261,7 +261,7 @@ router.post('/remove', authenticate, function(req, res, next) {
     }
 });
 
-/* list CustomerGroup. */
+/* list CustomerGroup customers. */
 router.get('/customers', authenticate, function(req, res, next) {
     if(!req.query.group_id){
         res.status(400).send({"message": "Missing data, (group_id) field is required."});

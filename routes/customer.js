@@ -51,6 +51,44 @@ router.get('/list', authenticate, function(req, res, next) {
     });
 });
 
+
+//create new customer
+router.post('/create', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('142')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to create customer."
+        });
+    }else{
+        let body = _.pick(req.body, ['name','phoneNumber']);
+        if(!body.name || !body.phoneNumber){
+            res.status(400).send({"message": "Missing data, (name, phoneNumber) fields are required."});
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            let customerObj = {
+                "name": body.name,
+                "phoneNumber": body.phoneNumber,
+                "register_completed": false,
+                "is_login": false,
+                "parent": body.parent
+            }
+            //create new customer
+            let newCustomerData = new Customer(customerObj);
+            newCustomerData.save().then((newCustomer) => {  
+                return res.send({
+                    "data": newCustomer
+                });
+            }).catch((e) => {
+                res.status(400).send({"message": "error happen while save new customer."});
+            });
+        }
+    }
+});
+
 router.get('/custom_products', authenticate, function(req, res, next) {
     if(!req.query.customer_id){
         res.status(400).send({
