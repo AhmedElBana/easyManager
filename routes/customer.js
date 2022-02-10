@@ -69,21 +69,35 @@ router.post('/create', authenticate, function(req, res, next) {
             }else if(req.user.type == 'staff'){
                 body.parent = req.user.parent;
             }
-            let customerObj = {
-                "name": body.name,
-                "phoneNumber": body.phoneNumber,
-                "register_completed": false,
-                "is_login": false,
-                "parent": body.parent
-            }
-            //create new customer
-            let newCustomerData = new Customer(customerObj);
-            newCustomerData.save().then((newCustomer) => {  
-                return res.send({
-                    "data": newCustomer
+            let filters = {phoneNumber: body.phoneNumber, parent: body.parent}
+            Customer.findOne(filters)
+            .then((customer) => {
+                if(!customer){
+                    let customerObj = {
+                        "name": body.name,
+                        "phoneNumber": body.phoneNumber,
+                        "register_completed": false,
+                        "is_login": false,
+                        "parent": body.parent
+                    }
+                    //create new customer
+                    let newCustomerData = new Customer(customerObj);
+                    newCustomerData.save().then((newCustomer) => {  
+                        return res.send({
+                            "data": newCustomer
+                        });
+                    }).catch((e) => {
+                        res.status(400).send({"message": "error happen while save new customer."});
+                    });
+                }else{
+                    res.status(400).send({
+                        "message": "لديك عميل مسجل بنفس رقم الهاتف."
+                    });
+                }
+            },(e) => {
+                res.status(400).send({
+                    "message": "error happen while get customer data."
                 });
-            }).catch((e) => {
-                res.status(400).send({"message": "error happen while save new customer."});
             });
         }
     }
