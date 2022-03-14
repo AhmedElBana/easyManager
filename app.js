@@ -119,12 +119,44 @@ let { Customer } = require('./db/models/customer');
 let { Branch } = require('./db/models/branch');
 let { Payment } = require('./db/models/payment');
 
+const contentParent = {
+    name: 'Auth',
+    icon: 'Accessibility',
+}
 const adminJs = new AdminJS({
     databases: [],
     rootPath: '/admin',
     resources: [
         { resource: Store, options: { listProperties: ['_id', 'name','parent', 'availableSMS','usedSMS', 'imagesStorageLimit', 'imagesStorage', 'phoneNumber','returnOrederAllowed','returnOrederDays','returnAnyBranch'] } },
-        { resource: User, options: { listProperties: ['_id', 'name', 'email', 'phoneNumber', 'type', 'active', 'parent'] } },
+        { resource: User, 
+            options: { 
+                listProperties: ['name', 'email', 'phoneNumber', 'type', 'parent'],
+                properties: {
+                    _id: {
+                      isVisible: { list: false, filter: true, show: true, edit: false }
+                    },
+                    active: {
+                        isVisible: { list: false, filter: true, show: true, edit: true }
+                    },
+                    password: {
+                      isVisible: { list: false, filter: false, show: false, edit: false }
+                    },
+                    code: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    is_login: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    type: {
+                        availableValues: [
+                            {value: 'admin', label: 'Admin'},
+                            {value: 'staff', label: 'Staff'},
+                        ],
+                    },
+                },
+                parent: contentParent
+            }
+        },
         Order, Customer, Branch, Payment],
     branding: {
       companyName: 'Tradket',

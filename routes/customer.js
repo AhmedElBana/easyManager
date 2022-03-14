@@ -102,7 +102,75 @@ router.post('/create', authenticate, function(req, res, next) {
         }
     }
 });
-
+//edit customer data
+router.post('/edit', authenticate, function(req, res, next) {
+    if(!req.user.permissions.includes('143')){
+        res.status(400).send({
+            "status": 0,
+            "message": "This user does not have perrmission to edit customer."
+        });
+    }else{
+        let body = _.pick(req.body, ['customer_id','name','phoneNumber']);
+        if(!body.customer_id || !body.name || !body.phoneNumber){
+            res.status(400).send({"message": "Missing data, (customer_id, name, phoneNumber) fields are required."});
+        }else{
+            if(req.user.type == 'admin'){
+                body.parent = req.user._id;
+            }else if(req.user.type == 'staff'){
+                body.parent = req.user.parent;
+            }
+            let search_filters = {phoneNumber: body.phoneNumber, parent: body.parent}
+            Customer.findOne(search_filters)
+            .then((search_customer) => {
+                if(!search_customer || (search_customer._id == body.customer_id)){
+                    let query = {_id: body.customer_id, parent: body.parent}
+                    let updateBody = {};
+                    if(body.name){updateBody.name = body.name};
+                    if(body.phoneNumber){updateBody.phoneNumber = body.phoneNumber};
+                    Customer.findOneAndUpdate(query,updateBody, { new: true }, (e, response) => {
+                        if(e){
+                            if(e.errmsg && e.errmsg.includes("phoneNumber")){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "This phone number is already exist for another customer."
+                                });
+                            }else if(e.name && e.name == "CastError"){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": e.message
+                                });
+                            }else{
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "error while updating customer data."
+                                });
+                            }
+                        }else{
+                            if(response == null){
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": "can't find any customer with this customer_id."
+                                });
+                            }else{
+                                return res.send({
+                                    "data": response
+                                });
+                            }
+                        }
+                    })
+                }else{
+                    res.status(400).send({
+                        "message": "This phone number is already exist for another customer."
+                    });
+                }
+            },(e) => {
+                res.status(400).send({
+                    "message": "error happen while search for customer."
+                });
+            });
+        }
+    }
+});
 router.get('/custom_products', authenticate, function(req, res, next) {
     if(!req.query.customer_id){
         res.status(400).send({
