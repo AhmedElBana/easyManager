@@ -1,7 +1,7 @@
 const AdminJS = require('adminjs');
 const AdminJSExpress = require('@adminjs/express');
 const AdminJSMongoose = require('@adminjs/mongoose')
-
+const bcrypt = require('bcryptjs');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser'); 
@@ -9,7 +9,10 @@ var logger = require('morgan');
 var morganBody = require('morgan-body');
 var bodyParser = require('body-parser');
 const chalk = require ('chalk');
+var session = require('express-session');
 
+
+var adminsRouter = require('./routes/admin');
 var usersRouter = require('./routes/users');
 var staffRouter = require('./routes/staff');
 var branchRouter = require('./routes/branch');
@@ -28,6 +31,124 @@ var storeRouter = require('./routes/store')
 var paymentRouter = require('./routes/payment')
 
 var app = express();
+app.use(bodyParser.json());
+let sessionOptions = {
+    secret: 'keyboard cat',
+    // resave: false,
+    // saveUninitialized: true,
+    // cookie: { secure: true }
+}
+app.use(session(sessionOptions));
+
+//setup admin
+AdminJS.registerAdapter(AdminJSMongoose)
+
+let { Store } = require('./db/models/store');
+let { Admin } = require('./db/models/admin');
+let { User } = require('./db/models/user');
+let { Order } = require('./db/models/order');
+let { Customer } = require('./db/models/customer');
+let { Branch } = require('./db/models/branch');
+let { Payment } = require('./db/models/payment');
+const admin_locale = {
+    translations: {
+      labels: {
+        loginWelcome: 'Tradket',
+      },
+      messages: {
+        loginWelcome: 'welcome to tradket admin panel',
+      },
+    },
+  };
+const contentParent = {
+    name: 'Auth',
+    icon: 'Accessibility',
+}
+const adminJs = new AdminJS({
+    databases: [],
+    rootPath: '/admin',
+    locale: admin_locale,
+    branding: {
+        companyName: 'Tradket',
+        softwareBrothers: false,
+        logo: 'https://tradket.com/static/media/logo.287bcb16.png',
+    },
+    resources: [
+        { resource: Store, options: { listProperties: ['_id', 'name','parent', 'availableSMS','usedSMS', 'imagesStorageLimit', 'imagesStorage', 'phoneNumber','returnOrederAllowed','returnOrederDays','returnAnyBranch'] } },
+        { resource: Admin, 
+            options: { 
+                listProperties: ['name', 'email','active'],
+                properties: {
+                    _id: {
+                        isVisible: { list: false, filter: true, show: true, edit: false }
+                    },
+                    permissions: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    active: {
+                        isVisible: { list: true, filter: true, show: true, edit: true }
+                    },
+                    password: {
+                      isVisible: { list: false, filter: false, show: false, edit: false }
+                    },
+                },
+                parent: contentParent
+            }
+        },
+        { resource: User, 
+            options: { 
+                listProperties: ['name', 'email', 'phoneNumber', 'type', 'parent'],
+                properties: {
+                    _id: {
+                      isVisible: { list: false, filter: true, show: true, edit: false }
+                    },
+                    active: {
+                        isVisible: { list: false, filter: true, show: true, edit: true }
+                    },
+                    password: {
+                      isVisible: { list: false, filter: false, show: false, edit: false }
+                    },
+                    code: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    is_login: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    type: {
+                        availableValues: [
+                            {value: 'admin', label: 'Admin'},
+                            {value: 'staff', label: 'Staff'},
+                        ],
+                    },
+                },
+                parent: contentParent
+            }
+        },
+        Order, Customer, Branch, Payment]
+});
+//const router = AdminJSExpress.buildRouter(adminJs)
+const router = AdminJSExpress.buildAuthenticatedRouter(adminJs, 
+    {
+        authenticate: async (email, password) => {
+            const user = await Admin.findOne({ email })
+            if (user) {
+                console.log(user)
+                const matched = await bcrypt.compare(password, user.password)
+                console.log(matched)
+                if (matched) {
+                    console.log("match")
+                    if(user.active){
+                        return user
+                    }else{
+                        return false
+                    }
+                }
+            }
+            return false
+        }
+    },
+);
+app.use(adminJs.options.rootPath, router);
 
 app.use(bodyParser.json());
 
@@ -92,6 +213,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static('uploads'));
 
+app.use('/api/admin', adminsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/staff', staffRouter);
 app.use('/api/branch', branchRouter);
@@ -108,64 +230,5 @@ app.use('/api/customer', customerRouter);
 app.use('/api/customerGroup', customerGroupRouter);
 app.use('/api/store', storeRouter)
 app.use('/api/payment', paymentRouter)
-
-//setup admin
-AdminJS.registerAdapter(AdminJSMongoose)
-
-let { Store } = require('./db/models/store');
-let { User } = require('./db/models/user');
-let { Order } = require('./db/models/order');
-let { Customer } = require('./db/models/customer');
-let { Branch } = require('./db/models/branch');
-let { Payment } = require('./db/models/payment');
-
-const contentParent = {
-    name: 'Auth',
-    icon: 'Accessibility',
-}
-const adminJs = new AdminJS({
-    databases: [],
-    rootPath: '/admin',
-    resources: [
-        { resource: Store, options: { listProperties: ['_id', 'name','parent', 'availableSMS','usedSMS', 'imagesStorageLimit', 'imagesStorage', 'phoneNumber','returnOrederAllowed','returnOrederDays','returnAnyBranch'] } },
-        { resource: User, 
-            options: { 
-                listProperties: ['name', 'email', 'phoneNumber', 'type', 'parent'],
-                properties: {
-                    _id: {
-                      isVisible: { list: false, filter: true, show: true, edit: false }
-                    },
-                    active: {
-                        isVisible: { list: false, filter: true, show: true, edit: true }
-                    },
-                    password: {
-                      isVisible: { list: false, filter: false, show: false, edit: false }
-                    },
-                    code: {
-                        isVisible: { list: false, filter: false, show: true, edit: true }
-                    },
-                    is_login: {
-                        isVisible: { list: false, filter: false, show: true, edit: true }
-                    },
-                    type: {
-                        availableValues: [
-                            {value: 'admin', label: 'Admin'},
-                            {value: 'staff', label: 'Staff'},
-                        ],
-                    },
-                },
-                parent: contentParent
-            }
-        },
-        Order, Customer, Branch, Payment],
-    branding: {
-      companyName: 'Tradket',
-    },
-})
-
-const router = AdminJSExpress.buildRouter(adminJs)
-
-
-app.use(adminJs.options.rootPath, router)
 
 module.exports = app;
