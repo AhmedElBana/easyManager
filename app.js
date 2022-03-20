@@ -64,9 +64,6 @@ const contentParent = {
     name: 'Auth',
     icon: 'Accessibility',
 }
-const canEditAdmins = ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can edit admin");
-const canDeleteAdmins = ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can delete admin");
-const canCreateAdmins = ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can create admin");
 const adminJs = new AdminJS({
     databases: [],
     rootPath: '/admin',
@@ -98,9 +95,9 @@ const adminJs = new AdminJS({
                 },
                 parent: contentParent,
                 actions: {
-                    new: {isAccessible: canCreateAdmins},
+                    new: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can create admin")},
                     edit: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can edit admin")},
-                    delete: {isAccessible: canDeleteAdmins},
+                    delete: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can delete admin")},
                 }
             }
         },
