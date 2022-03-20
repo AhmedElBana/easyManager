@@ -1,6 +1,10 @@
-{   
-    "100":"can view admin",
-    "101":"can edit admin",
-    "102":"can delete admin",
-    "103":"can create admin"
-}
+[
+    {"value": "can view admin", "label": "can view admin"},
+    {"value": "can edit admin", "label": "can edit admin"},
+    {"value": "can delete admin", "label": "can delete admin"},
+    {"value": "can create admin", "label": "can create admin"},
+    {"value": "can view user", "label": "can view user"},
+    {"value": "can edit user", "label": "can edit user"},
+    {"value": "can delete user", "label": "can delete user"},
+    {"value": "can create user", "label": "can create user"}
+]

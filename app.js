@@ -83,13 +83,14 @@ const adminJs = new AdminJS({
                         isVisible: { list: false, filter: true, show: true, edit: false }
                     },
                     permissions: {
-                        isVisible: { list: false, filter: false, show: true, edit: true }
+                        isVisible: { list: false, filter: false, show: true, edit: true },
+                        availableValues: JSON.parse(process.env['admin_permisitions'])
                     },
                     active: {
                         isVisible: { list: true, filter: true, show: true, edit: true }
                     },
                     password: {
-                        type: 'string',
+                        type: 'password',
                         isVisible: {list: false, edit: true, filter: false, show: false}
                     },
                 },
@@ -108,11 +109,16 @@ const adminJs = new AdminJS({
                     _id: {
                       isVisible: { list: false, filter: true, show: true, edit: false }
                     },
+                    permissions: {
+                        isVisible: { list: false, filter: false, show: true, edit: true },
+                        availableValues: JSON.parse(process.env['user_permisitions'])
+                    },
                     active: {
                         isVisible: { list: false, filter: true, show: true, edit: true }
                     },
                     password: {
-                      isVisible: { list: false, filter: false, show: false, edit: false }
+                        type: 'password',
+                        isVisible: {list: false, edit: true, filter: false, show: false}
                     },
                     code: {
                         isVisible: { list: false, filter: false, show: true, edit: true }
@@ -127,7 +133,12 @@ const adminJs = new AdminJS({
                         ],
                     },
                 },
-                parent: contentParent
+                parent: contentParent,
+                actions: {
+                    new: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can create user")},
+                    edit: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can edit user")},
+                    delete: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can delete user")},
+                }
             }
         },
         Order, Customer, Branch, Payment]
