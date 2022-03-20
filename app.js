@@ -64,6 +64,9 @@ const contentParent = {
     name: 'Auth',
     icon: 'Accessibility',
 }
+const canEditAdmins = ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can edit admin");
+const canDeleteAdmins = ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can delete admin");
+const canCreateAdmins = ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can create admin");
 const adminJs = new AdminJS({
     databases: [],
     rootPath: '/admin',
@@ -89,10 +92,16 @@ const adminJs = new AdminJS({
                         isVisible: { list: true, filter: true, show: true, edit: true }
                     },
                     password: {
-                      isVisible: { list: false, filter: false, show: false, edit: false }
+                        type: 'string',
+                        isVisible: {list: false, edit: true, filter: false, show: false}
                     },
                 },
-                parent: contentParent
+                parent: contentParent,
+                actions: {
+                    new: {isAccessible: canCreateAdmins},
+                    edit: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can edit admin")},
+                    delete: {isAccessible: canDeleteAdmins},
+                }
             }
         },
         { resource: User, 
@@ -132,11 +141,8 @@ const router = AdminJSExpress.buildAuthenticatedRouter(adminJs,
         authenticate: async (email, password) => {
             const user = await Admin.findOne({ email })
             if (user) {
-                console.log(user)
                 const matched = await bcrypt.compare(password, user.password)
-                console.log(matched)
                 if (matched) {
-                    console.log("match")
                     if(user.active){
                         return user
                     }else{

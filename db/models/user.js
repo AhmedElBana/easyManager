@@ -150,6 +150,13 @@ UserSchema.pre('findOneAndUpdate', function(next){
 				next();
 			});
 		});
+	}else if(user._update['$set']['password']){
+		bcrypt.genSalt(10, (err, salt) => {
+			bcrypt.hash(user._update['$set']['password'], salt, (err, hash) => {
+				user._update['$set']['password'] = hash;
+				next();
+			});
+		});
 	}else{
 		next();
 	}
