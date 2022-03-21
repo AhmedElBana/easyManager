@@ -67,7 +67,7 @@ const contentParent = {
 const adminJs = new AdminJS({
     databases: [],
     assets: {
-        styles: ["/css/admin.css"],
+        styles: ["/assets/css/admin.css"],
     },
     rootPath: '/admin',
     locale: admin_locale,
@@ -229,7 +229,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static('uploads'));
-app.use('/css', express.static('css'));
+app.use('/assets', express.static('assets'));
 
 app.use('/api/admin', adminsRouter);
 app.use('/api/users', usersRouter);
