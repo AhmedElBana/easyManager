@@ -66,12 +66,15 @@ const contentParent = {
 }
 const adminJs = new AdminJS({
     databases: [],
+    assets: {
+        styles: ["/css/admin.css"],
+    },
     rootPath: '/admin',
     locale: admin_locale,
     branding: {
         companyName: 'Tradket',
         softwareBrothers: false,
-        logo: 'https://tradket.com/static/media/logo.287bcb16.png',
+        logo: 'https://tradket.sfo3.digitaloceanspaces.com/tradket_assets/images/images/tradket_logo.png',
     },
     resources: [
         { resource: Store, options: { listProperties: ['_id', 'name','parent', 'availableSMS','usedSMS', 'imagesStorageLimit', 'imagesStorage', 'phoneNumber','returnOrederAllowed','returnOrederDays','returnAnyBranch'] } },
@@ -226,6 +229,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static('uploads'));
+app.use('/css', express.static('css'));
 
 app.use('/api/admin', adminsRouter);
 app.use('/api/users', usersRouter);
