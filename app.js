@@ -69,6 +69,9 @@ const adminJs = new AdminJS({
     assets: {
         styles: ["/assets/css/admin.css"],
     },
+    dashboard: {
+        component: AdminJS.bundle('./admin/home')
+    },
     rootPath: '/admin',
     locale: admin_locale,
     branding: {

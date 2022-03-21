@@ -7,7 +7,53 @@
     text-align: center;
     padding: 30px 0px;
     margin-bottom: 60px;
+    min-height: 75px;
 }
 .sc-egiyK.bNVkKb.adminjs_Box{
     display: none;
+}
+.sc-dIsAE.hZQdyP.adminjs_Box{
+    overflow-x: auto;
+    padding-top: 42px;
+}
+.tradket_home {
+    padding: 30px;
+}
+.tradket_home > .tradket_section{
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0px 0px 10px #ccc;
+}
+.tradket_home > .tradket_section > .head{
+    padding: 20px 25px;
+    border-bottom: 1px solid #ccc;
+    box-shadow: 0px 4px 10px #eee;
+}
+.tradket_home > .tradket_section > .head > p{
+    text-align: left;
+    font-size: 22px;
+    font-family: system-ui;
+}
+.tradket_home > .tradket_section > .body{
+    padding: 20px 25px;
+}
+
+.tradket_home > .tradket_section.xs{
+    display: inline-block;
+    width: calc(20% - 20px);
+    text-align: center;
+    margin: 10px;
+}
+.tradket_home > .tradket_section.xs > .head > p{
+    text-align: center;
+    font-size: 22px;
+    font-family: system-ui;
+}
+.tradket_home > .tradket_section.xs > .body{
+    padding: 30px 10px;
+}
+.tradket_home > .tradket_section.xs > .body > p{
+    text-align: center;
+    font-size: 18px;
+    font-family: system-ui;
 }
