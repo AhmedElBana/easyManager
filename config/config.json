@@ -18,6 +18,7 @@
         "DIGITALOCEAN_SPACE_ACCESS_KEY_ID": "RVKTRIOI73NSBYCYUVJK",
         "DIGITALOCEAN_SPACE_SECRET_ACCESS_KEY": "kvMzdoW3syKsyjEPgPQ6dHIDGzbJarRsmqX/KhM7pMg",
 
+        "cookie_secret": "DSFsdrRGT$%^YUhFNj567jHr67H$^%&$^UY4erhy%6r7uh",
         "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%"
     },
     "development": {
@@ -39,6 +40,7 @@
         "DIGITALOCEAN_SPACE_ACCESS_KEY_ID": "RVKTRIOI73NSBYCYUVJK",
         "DIGITALOCEAN_SPACE_SECRET_ACCESS_KEY": "kvMzdoW3syKsyjEPgPQ6dHIDGzbJarRsmqX/KhM7pMg",
 
+        "cookie_secret": "DSFsdrRGT$%^YUhFNj567jHr67H$^%&$^UY4erhy%6r7uh",
         "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%"
     }
 }
