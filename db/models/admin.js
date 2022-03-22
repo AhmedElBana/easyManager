@@ -126,7 +126,7 @@ AdminSchema.pre('findOneAndUpdate', function(next){
 				next();
 			});
 		});
-	}else if(admin._update['$set']['password']){
+	}else if(admin._update['$set'] && admin._update['$set']['password']){
 		bcrypt.genSalt(10, (err, salt) => {
 			bcrypt.hash(admin._update['$set']['password'], salt, (err, hash) => {
 				admin._update['$set']['password'] = hash;

@@ -6,24 +6,7 @@ var bodyParser = require('body-parser');
 var session = require('express-session');
 const ADMINJS = require('./admin/admin');
 const LOGGER = require('./logger/logger');
-
-// var adminsRouter = require('./routes/admin');
-var usersRouter = require('./routes/users');
-var staffRouter = require('./routes/staff');
-var branchRouter = require('./routes/branch');
-var categoryRouter = require('./routes/category')
-var subCategoryRouter = require('./routes/subCategory')
-var featureRouter = require('./routes/feature')
-var productGroupRouter = require('./routes/productGroup')
-var productRouter = require('./routes/product')
-var custom_productRouter = require('./routes/custom_product')
-var transferRouter = require('./routes/transfer')
-var orderRouter = require('./routes/order')
-var promoRouter = require('./routes/promo')
-var customerRouter = require('./routes/customer')
-var customerGroupRouter = require('./routes/customerGroup')
-var storeRouter = require('./routes/store')
-var paymentRouter = require('./routes/payment')
+const active_routes = require('./routes/active_routes');
 
 var app = express();
 app.use(bodyParser.json());
@@ -38,11 +21,11 @@ let sessionOptions = {
 }
 app.use(session(sessionOptions));
 
-//call adminJs
+// use adminJs
 app.use(ADMINJS.adminJs.options.rootPath, ADMINJS.router);
 
 app.use(bodyParser.json());
-
+// use logger
 app.use(LOGGER.logger(
 `:method :url
 Status: :status || :res[content-length] bytes :response-time ms || User ID: :user-id || Date: :date[iso] \nUser IP: :remote-addr || :user-agent :body :resp-body
@@ -74,22 +57,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static('uploads'));
 app.use('/assets', express.static('assets'));
 
-// app.use('/api/admin', adminsRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/staff', staffRouter);
-app.use('/api/branch', branchRouter);
-app.use('/api/category', categoryRouter);
-app.use('/api/subCategory', subCategoryRouter);
-app.use('/api/feature', featureRouter);
-app.use('/api/productGroup', productGroupRouter);
-app.use('/api/product', productRouter);
-app.use('/api/custom_product', custom_productRouter);
-app.use('/api/transfer', transferRouter);
-app.use('/api/order', orderRouter);
-app.use('/api/promo', promoRouter);
-app.use('/api/customer', customerRouter);
-app.use('/api/customerGroup', customerGroupRouter);
-app.use('/api/store', storeRouter)
-app.use('/api/payment', paymentRouter)
+// use active routes
+active_routes.map((current_route)=>{
+    app.use(current_route.path, current_route.route);
+})
 
 module.exports = app;

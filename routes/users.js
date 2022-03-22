@@ -122,6 +122,7 @@ router.post('/login_v2', function(req, res, next) {
                       }
                   })
                   .catch(err => {
+                      console.log(err)
                       res.status(401).send({
                           "status": 0,
                           "message": "error while query user data."
