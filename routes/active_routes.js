@@ -25,6 +25,7 @@ const active_routes = [
     {'path': '/api/subCategory', 'route': subCategoryRouter},
     {'path': '/api/feature', 'route': featureRouter},
     {'path': '/api/productGroup', 'route': productGroupRouter},
+    {'path': '/api/product', 'route': productRouter},
     {'path': '/api/custom_product', 'route': custom_productRouter},
     {'path': '/api/transfer', 'route': transferRouter},
     {'path': '/api/order', 'route': orderRouter},
