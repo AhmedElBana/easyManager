@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const _ = require('lodash');
 let {authenticate} = require('../middleware/authenticate');
+let {User} = require('../db/models/user');
 let {Customer} = require('../db/models/customer');
 let {Custom_product} = require('../db/models/custom_product');
 
@@ -50,8 +51,168 @@ router.get('/list', authenticate, function(req, res, next) {
         });
     });
 });
-
-
+//signup new customer
+router.post('/signup', function(req, res, next) {
+    let body = _.pick(req.body, ['name','phoneNumber','password','parent']);
+    if(!body.name || !body.phoneNumber || !body.password || !body.parent){
+        res.status(400).send({"message": "Missing data, (name, phoneNumber, password, parent) fields are required."});
+    }else{
+        User.findOne({"_id": body.parent, 'type': "admin"})
+        .then((user) => {
+            if(!user){
+                res.status(400).send({"message": "wrong parent id."});
+            }else{
+                Customer.findOne({"parent": body.parent, 'phoneNumber': body.phoneNumber})
+                .then((customer) => {
+                    if(!customer){
+                        let customerObj = {
+                            "name": body.name,
+                            "phoneNumber": body.phoneNumber,
+                            "password": body.password,
+                            "parent": body.parent,
+                            "is_login": true,
+                            "register_completed": true
+                        }
+                        let newCustomerData = new Customer(customerObj);
+                        newCustomerData.save().then((newCustomer) => {
+                            let token = newCustomer.generateAuthToken();
+                            return res.header('x-auth', token).status(201).send({
+                                "data": newCustomer, "token": token
+                            });
+                        }).catch((e) => {
+                            if(e.code){
+                                if(e.code == 11000){
+                                    if(e.errmsg.includes("phoneNumber")){
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": "This store phone number is already exist."
+                                        });
+                                    }else{
+                                        res.status(400).send({
+                                            "status": 0,
+                                            "message": e
+                                        });
+                                    }
+                                }else{
+                                    res.status(400).send({
+                                        "status": 0,
+                                        "message": e
+                                    });
+                                }
+                            }else{
+                                res.status(400).send({
+                                    "status": 0,
+                                    "message": e
+                                });
+                            }
+                        });
+                    }else{
+                        if(!customer.register_completed){
+                            let newData = {
+                                "name": body.name,
+                                "password": body.password,
+                                "is_login": true,
+                                "register_completed": true
+                            }
+                            Customer.findOneAndUpdate({"_id": customer._id},newData, { new: true, useFindAndModify:false })
+                            .then(current_customer => {
+                                if(current_customer){
+                                    let token = current_customer.generateAuthToken();
+                                    return res.header('x-auth', token).status(201).send({
+                                        "data": current_customer, "token": token
+                                    });
+                                }else{
+                                    res.status(401).send({"message": "error while query customer data."});
+                                }
+                            })
+                            .catch(err => {
+                                res.status(401).send({"message": "error while query customer data."});
+                            });
+                        }else{
+                            res.status(400).send({"message": "رقم الهاتف مسجل لدينا من قبل."});
+                        }
+                    }
+                },(e) => {
+                    res.status(400).send({"message": "error while query customer data."});
+                });
+            }
+        },(e) => {
+            res.status(400).send({"message": "wrong parent id."});
+        });
+        // let filters = {phoneNumber: body.phoneNumber, parent: body.parent}
+        // Customer.findOne(filters)
+        // .then((customer) => {
+        //     if(!customer){
+        //         let customerObj = {
+        //             "name": body.name,
+        //             "phoneNumber": body.phoneNumber,
+        //             "register_completed": false,
+        //             "is_login": false,
+        //             "parent": body.parent
+        //         }
+        //         //create new customer
+        //         let newCustomerData = new Customer(customerObj);
+        //         newCustomerData.save().then((newCustomer) => {  
+        //             return res.send({
+        //                 "data": newCustomer
+        //             });
+        //         }).catch((e) => {
+        //             res.status(400).send({"message": "error happen while save new customer."});
+        //         });
+        //     }else{
+        //         res.status(400).send({
+        //             "message": "لديك عميل مسجل بنفس رقم الهاتف."
+        //         });
+        //     }
+        // },(e) => {
+        //     res.status(400).send({
+        //         "message": "error happen while get customer data."
+        //     });
+        // });
+    }
+});
+/* customer Login. */
+router.post('/login', function(req, res, next) {
+    let body = _.pick(req.body, ['phoneNumber','password','parent']);
+    if(!body.phoneNumber || !body.password || !body.parent){
+        res.status(400).send({
+            "status": 0,
+            "message": "Missing data, (phoneNumber, password, parent) fields are required."
+        });
+    }else{
+        Customer.findByCredentials(body.phoneNumber, body.password, body.parent).then((customer) => {
+            let query = {_id: customer._id};
+            let newData = {"is_login": true}
+            Customer.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
+            .then(response => {
+                if(response){
+                let token = customer.generateAuthToken();
+                return res.header('x-auth', token).status(201).send({
+                    "data": customer, "token": token
+                });
+                }else{
+                    res.status(401).send({
+                        "status": 0,
+                        "message": "Invalid customer data."
+                    });
+                }
+            })
+            .catch(err => {
+                res.status(401).send({
+                    "status": 0,
+                    "message": "error while query customer data."
+                });
+            });
+        }).catch((e) => {
+            res.status(401).send({
+                "message": {
+                        "en": "phone number or password is not correct.",
+                        "ar": "خطا في رقم الهاتف او كلمة المرور."
+                }
+            });
+        });
+    }
+});
 //create new customer
 router.post('/create', authenticate, function(req, res, next) {
     if(!req.user.permissions.includes('142')){

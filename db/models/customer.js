@@ -48,9 +48,9 @@ CustomerSchema.statics.findByToken = function(token){
 		return Promise.reject();
 	}
 }
-CustomerSchema.statics.findByCredentials = function(phoneNumber, password){
+CustomerSchema.statics.findByCredentials = function(phoneNumber, password, parent){
 	Customer = this;
-	return Customer.findOne({phoneNumber}).then((customer) => {
+	return Customer.findOne({"phoneNumber": phoneNumber, "parent": parent}).then((customer) => {
 		if(!customer){
 			return Promise.reject();
 		}
@@ -84,6 +84,13 @@ CustomerSchema.pre('findOneAndUpdate', function(next){
 		bcrypt.genSalt(10, (err, salt) => {
 			bcrypt.hash(customer._update['password'], salt, (err, hash) => {
 				customer._update['password'] = hash;
+				next();
+			});
+		});
+	}else if(customer._update['$set'] && customer._update['$set']['password']){
+		bcrypt.genSalt(10, (err, salt) => {
+			bcrypt.hash(customer._update['$set']['password'], salt, (err, hash) => {
+				customer._update['$set']['password'] = hash;
 				next();
 			});
 		});
