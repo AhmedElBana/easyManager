@@ -17,6 +17,8 @@
         "TWILIO_AUTH_TOKEN": "cdc8e1f4e9668c9e78fa38b1f180b49b",
         "DIGITALOCEAN_SPACE_ACCESS_KEY_ID": "RVKTRIOI73NSBYCYUVJK",
         "DIGITALOCEAN_SPACE_SECRET_ACCESS_KEY": "kvMzdoW3syKsyjEPgPQ6dHIDGzbJarRsmqX/KhM7pMg",
+        "mailazy_key": "c8tis3tb6okvtrgl4fd0JsvGOnINgr",
+        "mailazy_secret": "JVUNIaELIHMSLRevsqevFJtLQEt.pMP9F8HAgwT7D4k7EcPyW8",
 
         "cookie_secret": "DSFsdrRGT$%^YUhFNj567jHr67H$^%&$^UY4erhy%6r7uh",
         "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%"
@@ -39,6 +41,8 @@
         "TWILIO_AUTH_TOKEN": "cdc8e1f4e9668c9e78fa38b1f180b49b",
         "DIGITALOCEAN_SPACE_ACCESS_KEY_ID": "RVKTRIOI73NSBYCYUVJK",
         "DIGITALOCEAN_SPACE_SECRET_ACCESS_KEY": "kvMzdoW3syKsyjEPgPQ6dHIDGzbJarRsmqX/KhM7pMg",
+        "mailazy_key": "c8tis3tb6okvtrgl4fd0JsvGOnINgr",
+        "mailazy_secret": "JVUNIaELIHMSLRevsqevFJtLQEt.pMP9F8HAgwT7D4k7EcPyW8",
 
         "cookie_secret": "DSFsdrRGT$%^YUhFNj567jHr67H$^%&$^UY4erhy%6r7uh",
         "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%"

@@ -5,6 +5,8 @@ let {authenticate} = require('../middleware/authenticate');
 let {User} = require('../db/models/user');
 let {Customer} = require('../db/models/customer');
 let {Custom_product} = require('../db/models/custom_product');
+let {single_email_otp} = require('./../services/email_mailazy');
+const { errorMonitor } = require('nodemailer/lib/mailer');
 
 /* list subcategories. */
 router.get('/list', authenticate, function(req, res, next) {
@@ -374,4 +376,168 @@ router.get('/custom_products', authenticate, function(req, res, next) {
     }
 });
 
+// forgotpassword flow
+router.post('/forgotpassword', function(req, res, next) {
+    let body = _.pick(req.body, ['email']);
+    if(body.email){
+        single_email_otp(
+            "5621",
+            body.email,
+            function(error, data){
+                if (error){
+                    return res.status(201).send({
+                        "sms": "fail",
+                        "data": errorMonitor
+                    });
+                }else{
+                    return res.status(201).send({
+                        "sms": "success",
+                        "data": data
+                    });
+                }
+            }
+        )
+        // User.find({email: body.email}).then(
+        //     (result) => {
+        //         if(result.length === 0){
+        //             res.status(400).send({
+        //                 "status": 0,
+        //                 "message": "Invalid email."
+        //             });
+        //         }else{
+        //             //genrate random 5 digis code
+        //             let code = Math.floor(Math.random()*90000) + 10000;
+        //             //save code and send message with it
+        //             let query = {email: body.email};
+        //             let newData = {"code": code}
+        //             User.findOneAndUpdate(query,newData, { new: true })
+        //             .then(response => {
+        //                 if(response){
+        //                   let transporter = nodeMailer.createTransport({
+        //                       host: 'smtp.gmail.com',
+        //                       port: 465,
+        //                       secure: true,
+        //                       auth: {
+        //                           // should be replaced with real sender's account
+        //                           user: 'ahmedelpna@gmail.com',
+        //                           pass: process.env.GoogleAppPass
+        //                       }
+        //                   });
+        //                   let mailOptions = {
+        //                       // should be replaced with real recipient's account
+        //                       to: result[0].email,
+        //                       subject: "easyManager",
+        //                       html: "<b>Your OPT is : " + code + "</b>"
+        //                   };
+        //                   transporter.sendMail(mailOptions, (error, info) => {
+        //                       if (error) {
+        //                         res.status(400).send({
+        //                           "status": 0,
+        //                           "message": error
+        //                       });
+        //                       }
+        //                       return res.send({
+        //                         "status": 1
+        //                     });
+        //                   });
+        //                 }else{
+        //                     res.status(400).send({
+        //                         "status": 0,
+        //                         "message": "Invalid email."
+        //                     });
+        //                 }
+        //             })
+        //             .catch(err => {
+        //                 res.status(400).send({
+        //                     "status": 0,
+        //                     "message": "error while query user data."
+        //                 });
+        //             });
+        //         }
+        //     },(e) => {
+        //         res.status(400).send({
+        //             "status": 0,
+        //             "message": "error happened while query user with email."
+        //         });
+        //     }
+        // )
+    }else{
+        res.status(400).send({
+            "status": 0,
+            "message": "missing data: email field is required."
+        });
+    }
+  });
+  /* get user code and generate new token. */
+  router.post('/verifycode', function(req, res, next) {
+    let body = _.pick(req.body, ['email','code']);
+    if(body.email && body.code){
+        User.find({"email": body.email}).then(
+            (result) => {
+                if(result.length === 0){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Invalid email."
+                    });
+                }else{
+                    if(result[0].code == body.code){
+                        let token = result[0].generateAuthToken();
+                        return res.header('x-auth', token).send({
+                            "status": 1,
+                            "data": {"token": token}
+                        });
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "Invalid code."
+                        });
+                    }
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "Invalid email."
+                });
+            }
+        )
+    }else{
+        res.status(400).send({
+            "status": 0,
+            "message": "missing data: email and code fields are required."
+        });
+    }
+  });
+  /* change password. */
+  router.post('/changepassword', authenticate, function(req, res, next) {
+    let body = _.pick(req.body, ['password']);
+      let user = req.user;
+      if(body.password){
+          let query = {"_id": user._id};
+          let newData = {"password": body.password}
+          User.findOneAndUpdate(query,newData, { new: true })
+          .then(response => {
+              if(response){
+                  res.send({
+                      "status": 1
+                  });
+              }else{
+                  res.status(400).send({
+                      "status": 0,
+                      "message": "Invalid data."
+                  });
+              }
+          })
+          .catch(err => {
+              res.status(400).send({
+                  "status": 0,
+                  "message": "error while query user data."
+              });
+          });
+      }else{
+          res.status(400).send({
+              "status": 0,
+              "message": "missing data: password field is required."
+          });
+      }
+  });
 module.exports = router;
