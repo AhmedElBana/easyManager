@@ -109,7 +109,36 @@ const adminJs = new AdminJS({
                 }
             }
         },
-        Order, Customer, Branch, Payment]
+        { resource: Customer, 
+            options: { 
+                listProperties: ['name', 'phoneNumber', 'email', 'register_completed', 'parent'],
+                properties: {
+                    _id: {
+                      isVisible: { list: false, filter: true, show: true, edit: false }
+                    },
+                    password: {
+                        type: 'password',
+                        isVisible: {list: false, edit: true, filter: false, show: false}
+                    },
+                    code: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    is_login: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                    debt: {
+                        isVisible: { list: false, filter: false, show: true, edit: true }
+                    },
+                },
+                parent: contentParent,
+                actions: {
+                    new: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can create customer")},
+                    edit: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can edit customer")},
+                    delete: {isAccessible: ({ currentAdmin }) => currentAdmin && currentAdmin.permissions.includes("can delete customer")},
+                }
+            }
+        },
+        Order, Branch, Payment]
 });
 const router = AdminJSExpress.buildAuthenticatedRouter(adminJs, 
     {

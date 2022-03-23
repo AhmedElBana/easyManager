@@ -6,5 +6,9 @@
     {"value": "can view user", "label": "can view user"},
     {"value": "can edit user", "label": "can edit user"},
     {"value": "can delete user", "label": "can delete user"},
-    {"value": "can create user", "label": "can create user"}
+    {"value": "can create user", "label": "can create user"},
+    {"value": "can view customer", "label": "can view customer"},
+    {"value": "can edit customer", "label": "can edit customer"},
+    {"value": "can delete customer", "label": "can delete customer"},
+    {"value": "can create customer", "label": "can create customer"}
 ]

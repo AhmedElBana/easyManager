@@ -11,17 +11,25 @@ let CustomerSchema = new mongoose.Schema({
 	debt: { type: Number, default: 0 },
 	password: { type: String, minlength: 6, trim: true },
 	phoneNumber: { type: String, trim: true, unique: false, required: true },
-	parent: {type: ObjectId, ref: 'User'},
+	email: { type: String, trim: true,
+		validate: {
+          validator: (value) => {
+            return validator.isEmail(value);
+          },
+          message: '{VALUE} is not a valid email!'
+        }
+	},
 	code: { type: String, trim: true },
 	register_completed: { type: Boolean, required: true },
 	is_login: { type: Boolean, required: true },
-	groups: {type: Array}
+	groups: {type: Array},
+	parent: {type: ObjectId, ref: 'User'},
 });
 
 CustomerSchema.methods.toJSON = function(){
 	let Customer = this;
 	let CustomerObject = Customer.toObject();
-	return _.pick(CustomerObject, ['_id','name','debt','phoneNumber','parent','register_completed','groups']);
+	return _.pick(CustomerObject, ['_id','name','debt','phoneNumber','email','code','register_completed','is_login','groups','parent']);
 }
 
 CustomerSchema.index({ _id: 1, parent: 1 }, { unique: true });
@@ -58,6 +66,23 @@ CustomerSchema.statics.findByCredentials = function(phoneNumber, password, paren
 			bcrypt.compare(password, customer.password, (err, res) => {
 				if(res){
 					resolve(customer);
+				}else{
+					reject();
+				}
+			});
+		});
+	});
+}
+CustomerSchema.statics.findByCredentials_identifier = function(identifier, password, parent){
+	Customer = this;
+	return Customer.findOne({$or:[{"phoneNumber": identifier, "parent": parent}, {"email": identifier, "parent": parent}]}).then((user) => {
+		if(!user){
+			return Promise.reject();
+		}
+		return new Promise((resolve, reject) => {
+			bcrypt.compare(password, user.password, (err, res) => {
+				if(res){
+					resolve(user);
 				}else{
 					reject();
 				}

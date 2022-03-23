@@ -53,21 +53,22 @@ router.get('/list', authenticate, function(req, res, next) {
 });
 //signup new customer
 router.post('/signup', function(req, res, next) {
-    let body = _.pick(req.body, ['name','phoneNumber','password','parent']);
-    if(!body.name || !body.phoneNumber || !body.password || !body.parent){
-        res.status(400).send({"message": "Missing data, (name, phoneNumber, password, parent) fields are required."});
+    let body = _.pick(req.body, ['name','phoneNumber','email','password','parent']);
+    if(!body.name || !body.phoneNumber || !body.email || !body.password || !body.parent){
+        res.status(400).send({"message": "Missing data, (name, phoneNumber, email, password, parent) fields are required."});
     }else{
         User.findOne({"_id": body.parent, 'type': "admin"})
         .then((user) => {
             if(!user){
                 res.status(400).send({"message": "wrong parent id."});
             }else{
-                Customer.findOne({"parent": body.parent, 'phoneNumber': body.phoneNumber})
+                Customer.findOne({"parent": body.parent, $or:[ {'phoneNumber': body.phoneNumber}, {'email': body.email}]})
                 .then((customer) => {
                     if(!customer){
                         let customerObj = {
                             "name": body.name,
                             "phoneNumber": body.phoneNumber,
+                            "email": body.email,
                             "password": body.password,
                             "parent": body.parent,
                             "is_login": true,
@@ -110,6 +111,7 @@ router.post('/signup', function(req, res, next) {
                         if(!customer.register_completed){
                             let newData = {
                                 "name": body.name,
+                                "email": body.email,
                                 "password": body.password,
                                 "is_login": true,
                                 "register_completed": true
@@ -129,7 +131,13 @@ router.post('/signup', function(req, res, next) {
                                 res.status(401).send({"message": "error while query customer data."});
                             });
                         }else{
-                            res.status(400).send({"message": "رقم الهاتف مسجل لدينا من قبل."});
+                            if(body.email == customer.email){
+                                res.status(400).send({"message": "البريد الالكتروني مسجل لدينا من قبل."});
+                            }else if(body.phoneNumber == customer.phoneNumber){
+                                res.status(400).send({"message": "رقم الهاتف مسجل لدينا من قبل."});
+                            }else{
+                                res.status(400).send({"message": "error happen while query customer data."});
+                            }
                         }
                     }
                 },(e) => {
@@ -139,48 +147,18 @@ router.post('/signup', function(req, res, next) {
         },(e) => {
             res.status(400).send({"message": "wrong parent id."});
         });
-        // let filters = {phoneNumber: body.phoneNumber, parent: body.parent}
-        // Customer.findOne(filters)
-        // .then((customer) => {
-        //     if(!customer){
-        //         let customerObj = {
-        //             "name": body.name,
-        //             "phoneNumber": body.phoneNumber,
-        //             "register_completed": false,
-        //             "is_login": false,
-        //             "parent": body.parent
-        //         }
-        //         //create new customer
-        //         let newCustomerData = new Customer(customerObj);
-        //         newCustomerData.save().then((newCustomer) => {  
-        //             return res.send({
-        //                 "data": newCustomer
-        //             });
-        //         }).catch((e) => {
-        //             res.status(400).send({"message": "error happen while save new customer."});
-        //         });
-        //     }else{
-        //         res.status(400).send({
-        //             "message": "لديك عميل مسجل بنفس رقم الهاتف."
-        //         });
-        //     }
-        // },(e) => {
-        //     res.status(400).send({
-        //         "message": "error happen while get customer data."
-        //     });
-        // });
     }
 });
 /* customer Login. */
 router.post('/login', function(req, res, next) {
-    let body = _.pick(req.body, ['phoneNumber','password','parent']);
-    if(!body.phoneNumber || !body.password || !body.parent){
+    let body = _.pick(req.body, ['identifier','password','parent']);
+    if(!body.identifier || !body.password || !body.parent){
         res.status(400).send({
             "status": 0,
-            "message": "Missing data, (phoneNumber, password, parent) fields are required."
+            "message": "Missing data, (identifier, password, parent) fields are required."
         });
     }else{
-        Customer.findByCredentials(body.phoneNumber, body.password, body.parent).then((customer) => {
+        Customer.findByCredentials_identifier(body.identifier, body.password, body.parent).then((customer) => {
             let query = {_id: customer._id};
             let newData = {"is_login": true}
             Customer.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
@@ -206,8 +184,8 @@ router.post('/login', function(req, res, next) {
         }).catch((e) => {
             res.status(401).send({
                 "message": {
-                        "en": "phone number or password is not correct.",
-                        "ar": "خطا في رقم الهاتف او كلمة المرور."
+                        "en": "Identifier or password is not correct.",
+                        "ar": "خطا في المستخدم او كلمة المرور."
                 }
             });
         });
