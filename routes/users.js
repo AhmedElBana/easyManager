@@ -4,8 +4,9 @@ const _ = require('lodash');
 let {User} = require('./../db/models/user');
 let {Store} = require('./../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
+let {single_email_otp} = require('./../services/email_mailazy');
+const { errorMonitor } = require('nodemailer/lib/mailer');
 
-let nodeMailer = require('nodemailer');
 /* User Login. */
 router.post('/login', function(req, res, next) {
     let body = _.pick(req.body, ['email','password']);
@@ -181,38 +182,19 @@ router.post('/forgotpassword', function(req, res, next) {
                     User.findOneAndUpdate(query,newData, { new: true })
                     .then(response => {
                         if(response){
-                          let transporter = nodeMailer.createTransport({
-                              host: 'smtp.gmail.com',
-                              port: 465,
-                              secure: true,
-                              auth: {
-                                  // should be replaced with real sender's account
-                                  user: 'ahmedelpna@gmail.com',
-                                  pass: process.env.GoogleAppPass
-                              }
-                          });
-                          let mailOptions = {
-                              // should be replaced with real recipient's account
-                              to: result[0].email,
-                              subject: "easyManager",
-                              html: "<b>Your OPT is : " + code + "</b>"
-                          };
-                          transporter.sendMail(mailOptions, (error, info) => {
-                              if (error) {
-                                res.status(400).send({
-                                  "status": 0,
-                                  "message": error
-                              });
-                              }
-                              return res.send({
-                                "status": 1
-                            });
-                          });
+                            single_email_otp(
+                                code,
+                                body.email,
+                                function(error, data){
+                                    if (error){
+                                        res.status(400).send({"message": "fail to send otp, please try again later."});
+                                    }else{
+                                        return res.send({"status": "success"});
+                                    }
+                                }
+                            )
                         }else{
-                            res.status(400).send({
-                                "status": 0,
-                                "message": "Invalid email."
-                            });
+                            res.status(400).send({"message": "Invalid email."});
                         }
                     })
                     .catch(err => {
