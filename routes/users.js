@@ -81,54 +81,58 @@ router.post('/login_v2', function(req, res, next) {
           });
       }else{
           User.findByCredentials_identifier(body.identifier, body.password).then((user) => {
-              let query = {_id: user._id};
-              let newData = {"is_login": true}
-              User.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
-                  .then(response => {
-                      if(response){
-                        let token = user.generateAuthToken();
-                        if(user.type == 'admin'){
-                            body.parent = user._id;
-                        }else if(user.type == 'staff'){
-                            body.parent = user.parent;
-                        }
-                        Store.findOne({parent: body.parent})
-                        .then((store) => {
-                            if(!store){
-                                res.status(400).send({
-                                    "status": 0,
-                                    "message": "you don't have any store with this parent."
-                                });
-                            }else{
-                                return res.header('x-auth', token).send({
-                                    "status": 1,
-                                    "data": {
-                                        "userData": response, 
-                                        "store": store,
-                                        "token": token
-                                    }
-                                });
-                            }
-                        },(e) => {
+              if(!user.active){
+                res.status(401).send({"error": "account is not active"});
+              }else{
+                let query = {_id: user._id};
+                let newData = {"is_login": true}
+                User.findOneAndUpdate(query,newData, { new: true, useFindAndModify:false })
+                .then(response => {
+                    if(response){
+                    let token = user.generateAuthToken();
+                    if(user.type == 'admin'){
+                        body.parent = user._id;
+                    }else if(user.type == 'staff'){
+                        body.parent = user.parent;
+                    }
+                    Store.findOne({parent: body.parent})
+                    .then((store) => {
+                        if(!store){
                             res.status(400).send({
                                 "status": 0,
                                 "message": "you don't have any store with this parent."
                             });
+                        }else{
+                            return res.header('x-auth', token).send({
+                                "status": 1,
+                                "data": {
+                                    "userData": response, 
+                                    "store": store,
+                                    "token": token
+                                }
+                            });
+                        }
+                    },(e) => {
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "you don't have any store with this parent."
                         });
-                      }else{
-                          res.status(401).send({
-                              "status": 0,
-                              "message": "Invalid user data."
-                          });
-                      }
-                  })
-                  .catch(err => {
-                      console.log(err)
-                      res.status(401).send({
-                          "status": 0,
-                          "message": "error while query user data."
-                      });
-                  });
+                    });
+                    }else{
+                        res.status(401).send({
+                            "status": 0,
+                            "message": "Invalid user data."
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.log(err)
+                    res.status(401).send({
+                        "status": 0,
+                        "message": "error while query user data."
+                    });
+                });
+              }
           }).catch((e) => {
               res.status(401).send({
                   "status": 0,

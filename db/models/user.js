@@ -84,14 +84,14 @@ UserSchema.statics.findByToken = function(token){
 	try {
 	  decoded = jwt.verify(token, process.env.JWT_SECRET);
 	} catch(err) {
-		return Promise.reject();
+		return Promise.reject({"error": "invaild token"});
 	}
 	if(decoded.access === 'userToken'){
 		return User.findOne({
 			'_id': decoded._id
 		});
 	}else{
-		return Promise.reject();
+		return Promise.reject({"error": "invaild token"});
 	}
 }
 UserSchema.statics.findByCredentials = function(email, password){
