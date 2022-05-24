@@ -32,6 +32,8 @@ module.exports = {
             });
             return callback(false, resp);
         } catch (e) {
+            console.log("##################");
+            console.log(e)
             return callback(true);
         }
     }
