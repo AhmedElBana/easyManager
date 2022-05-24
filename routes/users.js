@@ -233,7 +233,7 @@ router.post('/forgotpassword', function(req, res, next) {
                     User.findOneAndUpdate(query,newData, { new: true })
                     .then(response => {
                         if(response){
-                            single_whatsapp_otp(
+                            single_email_otp(
                                 code,
                                 body.email,
                                 function(error, data){
@@ -271,8 +271,37 @@ router.post('/forgotpassword', function(req, res, next) {
   });
   /* get user code and generate new token. */
   router.post('/verifycode', function(req, res, next) {
-    let body = _.pick(req.body, ['email','code']);
-    if(body.email && body.code){
+    let body = _.pick(req.body, ['email','whatsapp','code']);
+    if(body.whatsapp && body.code){
+        User.find({"phoneNumber": body.whatsapp}).then(
+            (result) => {
+                if(result.length === 0){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Invalid whatsapp."
+                    });
+                }else{
+                    if(result[0].code == body.code){
+                        let token = result[0].generateAuthToken();
+                        return res.header('x-auth', token).send({
+                            "status": 1,
+                            "data": {"token": token}
+                        });
+                    }else{
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "Invalid code."
+                        });
+                    }
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "Invalid whatsapp."
+                });
+            }
+        )
+    }else if(body.email && body.code){
         User.find({"email": body.email}).then(
             (result) => {
                 if(result.length === 0){
