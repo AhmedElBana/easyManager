@@ -21,7 +21,9 @@
         "mailazy_secret": "JVUNIaELIHMSLRevsqevFJtLQEt.pMP9F8HAgwT7D4k7EcPyW8",
 
         "cookie_secret": "DSFsdrRGT$%^YUhFNj567jHr67H$^%&$^UY4erhy%6r7uh",
-        "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%"
+        "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%",
+
+        "FACEBOOK_ACCESS_TOKEN": "EAAsu9eVEMsYBACemiZAvZCiYnT12ZAkZCmOrHpVA0C04G9JFV1E6TEd24sEl9pmQRwFBPDSDbDfFigHUZAqfUMvtHR0tcAD0V52f8dhNG7QMLfGfKVeMxYAdKPRDc2vA8bNCufPArnawrNlFUopvrv97HvflZBc4i0sel0LFtrslwPRboEhVrFJGYTTjTZBLCBp1pYdmF3hkAZDZD"
     },
     "development": {
         "PORT": 3001,
@@ -45,6 +47,8 @@
         "mailazy_secret": "JVUNIaELIHMSLRevsqevFJtLQEt.pMP9F8HAgwT7D4k7EcPyW8",
 
         "cookie_secret": "DSFsdrRGT$%^YUhFNj567jHr67H$^%&$^UY4erhy%6r7uh",
-        "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%"
+        "ADMIN_CREATE_SECRET": "safdwrG$#%teg5rDG534tgedrg#$%T345Yhgbe4getgvg$G%",
+
+        "FACEBOOK_ACCESS_TOKEN": "EAAsu9eVEMsYBACemiZAvZCiYnT12ZAkZCmOrHpVA0C04G9JFV1E6TEd24sEl9pmQRwFBPDSDbDfFigHUZAqfUMvtHR0tcAD0V52f8dhNG7QMLfGfKVeMxYAdKPRDc2vA8bNCufPArnawrNlFUopvrv97HvflZBc4i0sel0LFtrslwPRboEhVrFJGYTTjTZBLCBp1pYdmF3hkAZDZD"
     }
 }

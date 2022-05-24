@@ -5,6 +5,7 @@ let {User} = require('./../db/models/user');
 let {Store} = require('./../db/models/store');
 let {authenticate} = require('../middleware/authenticate');
 let {single_email_otp} = require('./../services/email_mailazy');
+let {single_whatsapp_otp} = require('./../services/whatsapp');
 const { errorMonitor } = require('nodemailer/lib/mailer');
 
 /* User Login. */
@@ -168,8 +169,54 @@ User.findOneAndUpdate(query,newData, { new: true })
 });
 /* generate new otp to change password. */
 router.post('/forgotpassword', function(req, res, next) {
-    let body = _.pick(req.body, ['email']);
-    if(body.email){
+    let body = _.pick(req.body, ['email', 'whatsapp']);
+    if(body.whatsapp){
+        User.find({phoneNumber: body.whatsapp}).then(
+            (result) => {
+                if(result.length === 0){
+                    res.status(400).send({
+                        "status": 0,
+                        "message": "Invalid whatsapp number."
+                    });
+                }else{
+                    //genrate random 5 digis code
+                    let code = Math.floor(Math.random()*90000) + 10000;
+                    //save code and send message with it
+                    let query = {phoneNumber: body.whatsapp};
+                    let newData = {"code": code}
+                    User.findOneAndUpdate(query,newData, { new: true })
+                    .then(response => {
+                        if(response){
+                            single_whatsapp_otp(
+                                code,
+                                body.whatsapp,
+                                function(error, data){
+                                    if (error){
+                                        res.status(400).send({"message": "fail to send otp, please try again later."});
+                                    }else{
+                                        return res.send({"status": "success"});
+                                    }
+                                }
+                            )
+                        }else{
+                            res.status(400).send({"message": "Invalid whatsapp."});
+                        }
+                    })
+                    .catch(err => {
+                        res.status(400).send({
+                            "status": 0,
+                            "message": "error while query user data."
+                        });
+                    });
+                }
+            },(e) => {
+                res.status(400).send({
+                    "status": 0,
+                    "message": "error happened while query user with email."
+                });
+            }
+        )
+    }else if(body.email){
         User.find({email: body.email}).then(
             (result) => {
                 if(result.length === 0){
@@ -186,7 +233,7 @@ router.post('/forgotpassword', function(req, res, next) {
                     User.findOneAndUpdate(query,newData, { new: true })
                     .then(response => {
                         if(response){
-                            single_email_otp(
+                            single_whatsapp_otp(
                                 code,
                                 body.email,
                                 function(error, data){
@@ -218,7 +265,7 @@ router.post('/forgotpassword', function(req, res, next) {
     }else{
         res.status(400).send({
             "status": 0,
-            "message": "missing data: email field is required."
+            "message": "missing data: email or whatsapp fields are required."
         });
     }
   });
